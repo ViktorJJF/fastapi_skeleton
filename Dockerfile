@@ -1,4 +1,4 @@
-FROM python:3.12-slim-buster  # Use the latest slim Python image
+FROM python:3.12-slim-buster
 
 # Set working directory
 WORKDIR /app
@@ -13,10 +13,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY ./app /app
 
 # Expose the port the app runs on
-EXPOSE 8000
+EXPOSE 4000
 
 # Set environment variables (if needed)
 # ENV MY_VARIABLE=my_value
 
 # Command to run the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "4000"]
