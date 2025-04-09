@@ -22,10 +22,10 @@ async def create(assistant_in: AssistantCreate, db: AsyncSession) -> JSONRespons
     """
     try:
         # Create item
-        item = await create_item(db, Assistant, assistant_in.dict())
+        item = await create_item(db, Assistant, assistant_in.model_dump())
         return JSONResponse(
             status_code=status.HTTP_201_CREATED,
-            content={"ok": True, "payload": AssistantSchema.from_orm(item).dict()}
+            content={"ok": True, "payload": item.to_dict()}
         )
     except Exception as e:
         return handle_error(JSONResponse, e)
@@ -40,13 +40,13 @@ async def update(id: str, assistant_in: AssistantUpdate, db: AsyncSession) -> JS
         valid_id = is_id_valid(id)
         
         # Update item
-        item = await update_item(db, Assistant, valid_id, assistant_in.dict(exclude_unset=True))
+        item = await update_item(db, Assistant, valid_id, assistant_in.model_dump(exclude_unset=True))
         if not item:
             raise build_error_object(status.HTTP_404_NOT_FOUND, "Assistant not found")
         
         return JSONResponse(
             status_code=status.HTTP_200_OK,
-            content={"ok": True, "payload": AssistantSchema.from_orm(item).dict()}
+            content={"ok": True, "payload": item.to_dict()}
         )
     except Exception as e:
         return handle_error(JSONResponse, e)
@@ -88,7 +88,7 @@ async def get_one(id: str, db: AsyncSession) -> JSONResponse:
         
         return JSONResponse(
             status_code=status.HTTP_200_OK,
-            content={"ok": True, "payload": AssistantSchema.from_orm(item).dict()}
+            content={"ok": True, "payload": item.to_dict()}
         )
     except Exception as e:
         return handle_error(JSONResponse, e)
@@ -102,7 +102,7 @@ async def list_all(request: Request, db: AsyncSession) -> JSONResponse:
         items = await get_all_items(db, Assistant)
         return JSONResponse(
             status_code=status.HTTP_200_OK,
-            content={"ok": True, "payload": [AssistantSchema.from_orm(item).dict() for item in items]}
+            content={"ok": True, "payload": [item.to_dict() for item in items]}
         )
     except Exception as e:
         return handle_error(JSONResponse, e)
@@ -117,8 +117,8 @@ async def list_paginated(request: Request, db: AsyncSession) -> JSONResponse:
         processed_query = await check_query_string(query_params)
         result = await get_items(db, Assistant, request, processed_query)
         
-        # Convert items to schema
-        result_items = [AssistantSchema.from_orm(item).dict() for item in result.items]
+        # Convert items using to_dict
+        result_items = [item.to_dict() for item in result.items]
         
         return JSONResponse(
             status_code=status.HTTP_200_OK,

@@ -114,7 +114,7 @@ class BaseController(Generic[ModelType, CreateSchemaType, UpdateSchemaType, GetS
             """
             try:
                 items = await get_all_items(db, self.model)
-                return {"ok": True, "payload": [self.get_schema.from_orm(item) for item in items]}
+                return {"ok": True, "payload": [self.get_schema.model_validate(item).model_dump() for item in items]}
             except Exception as e:
                 raise build_error_object(status.HTTP_500_INTERNAL_SERVER_ERROR, str(e))
         
@@ -132,7 +132,7 @@ class BaseController(Generic[ModelType, CreateSchemaType, UpdateSchemaType, GetS
                 result = await get_items(db, self.model, request, processed_query)
                 
                 # Convert items to schema
-                result.items = [self.get_schema.from_orm(item) for item in result.items]
+                result.items = [self.get_schema.model_validate(item).model_dump() for item in result.items]
                 
                 return {"ok": True, "payload": result.items, "pagination": {
                     "total": result.total,
@@ -154,7 +154,7 @@ class BaseController(Generic[ModelType, CreateSchemaType, UpdateSchemaType, GetS
             try:
                 valid_id = is_id_valid(id)
                 item = await get_item(db, self.model, valid_id)
-                return {"ok": True, "payload": self.get_schema.from_orm(item)}
+                return {"ok": True, "payload": self.get_schema.model_validate(item).model_dump()}
             except HTTPException as e:
                 raise e
             except Exception as e:
@@ -178,7 +178,7 @@ class BaseController(Generic[ModelType, CreateSchemaType, UpdateSchemaType, GetS
                 
                 # Create item
                 item = await create_item(db, self.model, item_in.dict())
-                return {"ok": True, "payload": self.get_schema.from_orm(item)}
+                return {"ok": True, "payload": self.get_schema.model_validate(item).model_dump()}
             except HTTPException as e:
                 raise e
             except Exception as e:
@@ -205,7 +205,7 @@ class BaseController(Generic[ModelType, CreateSchemaType, UpdateSchemaType, GetS
                 
                 # Update item
                 item = await update_item(db, self.model, valid_id, item_in.dict(exclude_unset=True))
-                return {"ok": True, "payload": self.get_schema.from_orm(item)}
+                return {"ok": True, "payload": self.get_schema.model_validate(item).model_dump()}
             except HTTPException as e:
                 raise e
             except Exception as e:
@@ -222,7 +222,7 @@ class BaseController(Generic[ModelType, CreateSchemaType, UpdateSchemaType, GetS
             try:
                 valid_id = is_id_valid(id)
                 item = await delete_item(db, self.model, valid_id)
-                return {"ok": True, "payload": self.get_schema.from_orm(item)}
+                return {"ok": True, "payload": self.get_schema.model_validate(item).model_dump()}
             except HTTPException as e:
                 raise e
             except Exception as e:

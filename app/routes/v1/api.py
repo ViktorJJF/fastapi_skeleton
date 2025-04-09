@@ -3,7 +3,7 @@ API router for v1 endpoints.
 """
 from fastapi import APIRouter
 
-from app.routes.v1 import cities, entities, assistants
+from app.routes.v1 import assistants
 
 # Create API router
 api_router = APIRouter()
@@ -16,13 +16,6 @@ async def health_check():
     """
     return {"status": "ok"}
 
-# Include route modules
-api_router.include_router(
-    cities.router, prefix="/cities", tags=["cities"]
-)
 api_router.include_router(
     assistants.router, prefix="/assistants", tags=["assistants"]
 )
-api_router.include_router(
-    entities.router, prefix="", tags=["entities"]
-) 

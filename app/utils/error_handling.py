@@ -3,6 +3,8 @@ from fastapi.responses import JSONResponse
 from typing import Any, Dict, Optional, Union
 import os
 import logging
+import traceback
+
 
 logger = logging.getLogger(__name__)
 
@@ -55,13 +57,11 @@ def handle_error(response: JSONResponse, error: Any) -> JSONResponse:
     Returns:
         JSONResponse: A formatted JSON response with error details
     """
-    # Print error in console for development environments
-    env = os.getenv("ENV", "production")
-    if env in ["local", "development"]:
-        if isinstance(error, HTTPException):
-            logger.error(f"Error {error.status_code}: {error.detail}")
-        else:
-            logger.error(f"Error: {str(error)}")
+    # Log the error message and the full traceback for detailed debugging
+    error_message = f"Error: {str(error)}"
+    traceback_info = traceback.format_exc()
+    
+    logger.error(f"{error_message}\nTraceback:\n{traceback_info}")
     
     # Format the error response
     if isinstance(error, HTTPException):

@@ -136,9 +136,7 @@ For more information, see `migrations/README.md` for detailed guidelines.
 All API endpoints are prefixed with `/api`. For example:
 
 - `/api/health` - Health check endpoint
-- `/api/v1/cities` - Cities endpoints
-- `/api/v1/users` - Users endpoints
-- `/api/v1/assistants/{assistant_id}/entities` - Entities endpoints for a specific assistant
+- `/api/v1/assistants` - Cities endpoints
 
 ## Architecture
 
