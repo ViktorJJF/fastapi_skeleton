@@ -1,0 +1,73 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.eggs/
+dist/
+build/
+develop-eggs/
+parts/
+wheels/
+lib/
+lib64/
+sdist/
+*.egg-info/
+.installed.cfg
+*.whl
+MANIFEST
+
+# PyInstaller
+#  Usually these files are written into a dist/ subdirectory.
+#  See the PyInstaller docs for more details.
+/_MEI*
+*.pkg
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs
+/site
+
+# mypy
+.mypy_cache/
+mypy-report/
+mypy-html/
+
+# celery beat schedule file
+celerybeat-schedule
+
+# Temporary files
+tmp*
+tmp
+temp*
+temp
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# OS generated files #
+######################
+.DS_Store
+Thumbs.db
+*.orig
+
+# Compiled files
+*.pyc
