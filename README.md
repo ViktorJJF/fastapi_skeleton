@@ -58,17 +58,73 @@ docker-compose up -d
 
 ### Database Migrations
 
-To create a new migration:
+This project uses Alembic for database migrations, following best practices from the official documentation:
+
+- [Alembic Tutorial](https://alembic.sqlalchemy.org/en/latest/tutorial.html)
+- [Auto-generating Migrations](https://alembic.sqlalchemy.org/en/latest/autogenerate.html)
+- [Naming Conventions](https://alembic.sqlalchemy.org/en/latest/naming.html)
+- [Cookbook Recipes](https://alembic.sqlalchemy.org/en/latest/cookbook.html)
+
+Our migration system provides a Rails-like experience with a comprehensive set of commands:
 
 ```bash
-docker-compose exec albedo alembic revision --autogenerate -m "Description"
+# Creating Migrations
+make db-create NAME="create users table"          # Create migration based on model changes
+make db-create-empty NAME="add custom function"   # Create empty migration for custom SQL
+make db-create-branch NAME="fix" PARENT="abc123"  # Create branch from specific parent
+
+# Running Migrations
+make db-migrate                # Apply all pending migrations
+make db-migrate REVISION="abc" # Migrate to specific revision
+make db-rollback               # Rollback one migration
+make db-rollback STEP=3        # Rollback three migrations
+make db-reset                  # Reset database (down to base, up to head)
+
+# Information Commands
+make db-status                 # Show current migration status
+make db-history                # Show migration history
+make db-history RANGE="abc:xyz" # Show specific migration range
+make db-show REVISION="abc123" # Show details of a specific revision
+make db-heads                  # Show current branch heads
+make db-branches               # Show branch points
+
+# Advanced Operations
+make db-stamp REVISION="abc123" # Mark revision as applied without running
+make db-sql                    # Generate SQL without executing
+make db-sql REVISION="abc" OUTPUT="migration.sql" # Generate SQL to file
+make db-verify                 # Verify migration setup
 ```
 
-To apply migrations:
+### Migration Architecture
 
-```bash
-docker-compose exec albedo alembic upgrade head
-```
+The migration system consists of the following components:
+
+- `alembic.ini` - Configuration file at project root
+- `migrations/` - Main directory containing migration files
+  - `env.py` - Environment configuration with SQLAlchemy setup
+  - `script.py.mako` - Template for new migration files
+  - `versions/` - Directory containing the actual migrations
+  - `README.md` - Detailed documentation on the migration system
+
+### Key Features
+
+Our migration system includes several advanced features:
+
+1. **Consistent naming conventions** for constraints and indexes
+2. **Automatic retries** with exponential backoff for database connections
+3. **Transaction-per-migration** for safer migration application
+4. **Comprehensive error handling** during migration runs
+5. **Support for branched migrations** for complex development workflows
+6. **Cross-database compatibility** with SQLite batch operations
+
+### Typical Workflow
+
+1. Modify your SQLAlchemy models in `app/models/`
+2. Run `make db-create NAME="describe your changes"`
+3. Review the auto-generated migration in `migrations/versions/`
+4. Apply with `make db-migrate`
+
+For more information, see `migrations/README.md` for detailed guidelines.
 
 ## API Documentation
 
@@ -159,4 +215,55 @@ async def get_items(
 
 ## License
 
-This project is licensed under the MIT License. 
+This project is licensed under the MIT License.
+
+## Database Setup
+
+### Initial Setup
+
+To set up the database for the first time:
+
+```bash
+# One-step setup (creates database and runs migrations)
+make db-setup
+
+# Reset tables and re-run migrations (useful for table name changes)
+make db-setup-reset
+
+# Or step by step:
+make db-create-database  # Creates the albedo_db database
+make db-reset-tables     # Optional: Drop existing tables and reset migration state
+make db-migrate          # Runs all pending migrations
+```
+
+### Table Naming Convention
+
+All database tables use plural names (e.g., `assistants` instead of `assistant`). The base model automatically handles pluralization of table names.
+
+### Working with Migrations
+
+We provide several commands to manage database migrations:
+
+```bash
+# Creating migrations
+make db-create NAME="create users table"          # Auto-generate migration from model changes
+make db-create-empty NAME="add custom function"   # Create empty migration for manual edits
+
+# Running migrations
+make db-migrate                                   # Apply all pending migrations 
+make db-migrate REVISION="abc123"                 # Migrate to specific revision
+
+# Rolling back
+make db-rollback                                  # Rollback one migration
+make db-rollback STEP=3                           # Rollback multiple migrations
+
+# Information
+make db-status                                    # Show current migration status
+make db-history                                   # Show migration history
+```
+
+For a complete list of database commands, run:
+
+```bash
+make help
+``` 

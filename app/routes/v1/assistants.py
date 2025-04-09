@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.controllers import assistant_controller
-from app.db.session import get_db
+from app.database.connection import get_db
 from app.schemas.assistant import AssistantCreate, AssistantUpdate
 from app.utils.error_handling import handle_error
 

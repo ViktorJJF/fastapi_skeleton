@@ -5,7 +5,7 @@ from sqlalchemy.future import select
 from sqlalchemy import func, or_
 from pydantic import BaseModel
 
-from app.db.session import Base
+from app.database.connection import Base
 from app.utils.pagination import paginate, PaginatedResponse
 
 ModelType = TypeVar("ModelType", bound=Base)

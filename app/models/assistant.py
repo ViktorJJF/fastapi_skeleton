@@ -8,6 +8,8 @@ class Assistant(BaseModel):
     """
     Assistant model.
     """
+    __tablename__ = "assistants"
+    
     name = Column(String, nullable=False)
     description = Column(String, nullable=True)
     

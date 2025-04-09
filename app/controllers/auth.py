@@ -5,7 +5,7 @@ from loguru import logger
 
 from app.schemas.token import Token
 from app.services.user import user_service
-from app.db.session import get_db
+from app.database.connection import get_db
 
 
 class AuthController:

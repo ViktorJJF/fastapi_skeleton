@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 
-from app.db.session import Base, get_db
+from app.database.connection import Base, get_db
 from app.utils.db_helpers import (
     get_all_items,
     get_items,
