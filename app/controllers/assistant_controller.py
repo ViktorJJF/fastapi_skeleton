@@ -1,5 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status, Request
+from fastapi.responses import JSONResponse
 
 from app.models.assistant import Assistant
 from app.schemas.assistant import AssistantCreate, AssistantUpdate, Assistant as AssistantSchema
@@ -12,22 +13,25 @@ from app.utils.db_helpers import (
     delete_item,
     check_query_string
 )
-from app.utils.error_handling import handle_error, is_id_valid
+from app.utils.error_handling import handle_error, is_id_valid, build_error_object
 
 
-async def create(assistant_in: AssistantCreate, db: AsyncSession):
+async def create(assistant_in: AssistantCreate, db: AsyncSession) -> JSONResponse:
     """
     Create a new assistant.
     """
     try:
         # Create item
         item = await create_item(db, Assistant, assistant_in.dict())
-        return {"ok": True, "payload": AssistantSchema.from_orm(item)}
+        return JSONResponse(
+            status_code=status.HTTP_201_CREATED,
+            content={"ok": True, "payload": AssistantSchema.from_orm(item).dict()}
+        )
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        return handle_error(JSONResponse, e)
 
 
-async def update(id: str, assistant_in: AssistantUpdate, db: AsyncSession):
+async def update(id: str, assistant_in: AssistantUpdate, db: AsyncSession) -> JSONResponse:
     """
     Update an assistant.
     """
@@ -38,16 +42,17 @@ async def update(id: str, assistant_in: AssistantUpdate, db: AsyncSession):
         # Update item
         item = await update_item(db, Assistant, valid_id, assistant_in.dict(exclude_unset=True))
         if not item:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assistant not found")
+            raise build_error_object(status.HTTP_404_NOT_FOUND, "Assistant not found")
         
-        return {"ok": True, "payload": AssistantSchema.from_orm(item)}
-    except HTTPException as e:
-        raise e
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"ok": True, "payload": AssistantSchema.from_orm(item).dict()}
+        )
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        return handle_error(JSONResponse, e)
 
 
-async def delete(id: str, db: AsyncSession):
+async def delete(id: str, db: AsyncSession) -> JSONResponse:
     """
     Delete an assistant.
     """
@@ -58,16 +63,17 @@ async def delete(id: str, db: AsyncSession):
         # Delete item
         item = await delete_item(db, Assistant, valid_id)
         if not item:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assistant not found")
+            raise build_error_object(status.HTTP_404_NOT_FOUND, "Assistant not found")
         
-        return {"ok": True, "message": "Assistant deleted successfully"}
-    except HTTPException as e:
-        raise e
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"ok": True, "message": "Assistant deleted successfully"}
+        )
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        return handle_error(JSONResponse, e)
 
 
-async def get_one(id: str, db: AsyncSession):
+async def get_one(id: str, db: AsyncSession) -> JSONResponse:
     """
     Get an assistant by ID.
     """
@@ -78,27 +84,31 @@ async def get_one(id: str, db: AsyncSession):
         # Get item
         item = await get_item(db, Assistant, valid_id)
         if not item:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assistant not found")
+            raise build_error_object(status.HTTP_404_NOT_FOUND, "Assistant not found")
         
-        return {"ok": True, "payload": AssistantSchema.from_orm(item)}
-    except HTTPException as e:
-        raise e
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"ok": True, "payload": AssistantSchema.from_orm(item).dict()}
+        )
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        return handle_error(JSONResponse, e)
 
 
-async def list_all(request: Request, db: AsyncSession):
+async def list_all(request: Request, db: AsyncSession) -> JSONResponse:
     """
     List all assistants.
     """
     try:
         items = await get_all_items(db, Assistant)
-        return {"ok": True, "payload": [AssistantSchema.from_orm(item) for item in items]}
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"ok": True, "payload": [AssistantSchema.from_orm(item).dict() for item in items]}
+        )
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        return handle_error(JSONResponse, e)
 
 
-async def list_paginated(request: Request, db: AsyncSession):
+async def list_paginated(request: Request, db: AsyncSession) -> JSONResponse:
     """
     List assistants with pagination.
     """
@@ -108,17 +118,20 @@ async def list_paginated(request: Request, db: AsyncSession):
         result = await get_items(db, Assistant, request, processed_query)
         
         # Convert items to schema
-        result.items = [AssistantSchema.from_orm(item) for item in result.items]
+        result_items = [AssistantSchema.from_orm(item).dict() for item in result.items]
         
-        return {
-            "ok": True,
-            "payload": {
-                "items": result.items,
-                "total": result.total,
-                "page": result.page,
-                "size": result.size,
-                "pages": result.pages
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={
+                "ok": True,
+                "payload": {
+                    "items": result_items,
+                    "total": result.total,
+                    "page": result.page,
+                    "size": result.size,
+                    "pages": result.pages
+                }
             }
-        }
+        )
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) 
+        return handle_error(JSONResponse, e) 
