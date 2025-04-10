@@ -4,11 +4,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import func, or_
 from pydantic import BaseModel
+from sqlalchemy.orm import DeclarativeBase
 
-from app.database.connection import Base
 from app.utils.pagination import paginate, PaginatedResponse
 
-ModelType = TypeVar("ModelType", bound=Base)
+ModelType = TypeVar("ModelType", bound=DeclarativeBase)
 SchemaType = TypeVar("SchemaType", bound=BaseModel)
 
 

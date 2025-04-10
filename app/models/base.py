@@ -1,26 +1,26 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, DateTime
-from sqlalchemy.ext.declarative import declared_attr
+from typing import Optional
 import inflect
 import json
 
-from app.database.connection import Base
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy import DateTime, Integer
 
 # Initialize inflect engine for pluralization
 p = inflect.engine()
 
 
-class BaseModel(Base):
+class BaseModel(DeclarativeBase):
     """
     Base model for all database models.
     """
     __abstract__ = True
 
-    id = Column(Integer, primary_key=True, index=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
-    @declared_attr
+    @classmethod
     def __tablename__(cls) -> str:
         """
         Generate __tablename__ automatically from class name, using plural form.

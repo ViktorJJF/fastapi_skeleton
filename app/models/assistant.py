@@ -1,5 +1,5 @@
-from sqlalchemy import Column, String
-from sqlalchemy.orm import relationship
+from typing import Optional
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import BaseModel
 
@@ -10,8 +10,5 @@ class Assistant(BaseModel):
     """
     __tablename__ = "assistants"
     
-    name = Column(String, nullable=False)
-    description = Column(String, nullable=True)
-    
-    # Relationships
-    entities = relationship("Entity", back_populates="assistant", cascade="all, delete-orphan") 
+    name: Mapped[str] = mapped_column(nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(nullable=True)
