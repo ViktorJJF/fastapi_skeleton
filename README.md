@@ -1,4 +1,4 @@
-# Albedo API
+# FastAPI Skeleton
 
 A scalable FastAPI project with MVC patterns, PostgreSQL, Redis, and logging.
 
