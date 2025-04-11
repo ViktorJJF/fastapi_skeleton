@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 
 
@@ -42,4 +42,11 @@ class Assistant(AssistantInDBBase):
     """
     Schema for assistant response.
     """
-    pass 
+    pass
+
+
+class AssistantDeleteManyInput(BaseModel):
+    """
+    Schema for deleting multiple assistants by their IDs.
+    """
+    ids: List[str] = Field(..., description="A list of assistant IDs to delete.") 

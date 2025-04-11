@@ -2,9 +2,12 @@ from typing import Any, Dict, List, Optional, Type, TypeVar, Union, Generic
 from fastapi import Request, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy import func, or_, update
+from sqlalchemy import func, or_, update, delete as sqlalchemy_delete
+from sqlalchemy.inspection import inspect
+from sqlalchemy.sql import sqltypes
 from pydantic import BaseModel
 from sqlalchemy.orm import DeclarativeBase
+from datetime import datetime
 
 from app.utils.pagination import paginate, PaginatedResponse
 
@@ -38,50 +41,93 @@ async def list_init_options(request: Request) -> Dict[str, Any]:
     }
 
 
-async def check_query_string(query_params: Dict[str, Any]) -> Dict[str, Any]:
+async def check_query_string(query_params: Dict[str, Any], model: Type[ModelType]) -> Dict[str, Any]:
     """
-    Process query parameters for filtering.
+    Process query parameters for filtering, converting types based on the model.
     """
     queries = {}
     filter_value = query_params.get("filter")
     fields = query_params.get("fields")
-    
+    model_mapper = inspect(model)
+
     # Process pagination parameters
     try:
         page = int(query_params.get("page", "1"))
     except ValueError:
         page = 1
-    
+
     try:
         size = int(query_params.get("size", "10"))
     except ValueError:
         size = 10
-    
+
     # Add processed pagination parameters
     queries["page"] = page
     queries["size"] = size
-    
-    # Copy other query params except filter, fields, page, and size
+
+    # Copy other query params, attempting type conversion for model fields
     for key, value in query_params.items():
-        if key not in ["filter", "fields", "page", "size", "limit", "order", "sort"]:
+        if key in ["filter", "fields", "page", "size", "limit", "order", "sort"]:
+            if key in ["order", "sort"]:
+                 queries[key] = value # Keep sort/order as strings
+            continue # Skip special keys already handled or to be handled separately
+
+        # Check if the key is a column in the model
+        if key in model_mapper.columns:
+            column = model_mapper.columns[key]
+            target_type = column.type.python_type
+            try:
+                # Attempt conversion
+                if target_type is bool:
+                    # Handle boolean conversion explicitly (e.g., 'true', 'false', '1', '0')
+                    if isinstance(value, str) and value.lower() in ['true', '1']:
+                        converted_value = True
+                    elif isinstance(value, str) and value.lower() in ['false', '0']:
+                        converted_value = False
+                    elif isinstance(value, (bool, int)):
+                         converted_value = bool(value)
+                    else:
+                        raise ValueError(f"Invalid boolean value for {key}: {value}")
+                elif target_type is datetime:
+                    # Add more robust datetime parsing if needed (e.g., different formats)
+                    converted_value = datetime.fromisoformat(value)
+                else:
+                     # General conversion for int, float, etc.
+                    converted_value = target_type(value)
+
+                queries[key] = converted_value
+            except (ValueError, TypeError) as e:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid value for parameter '{key}'. Expected type {target_type.__name__}, but received '{value}'. Error: {e}"
+                )
+        else:
+            # If not a model column, keep it as is (string)
+            # Or decide if non-model query params should be allowed/ignored
             queries[key] = value
-        elif key in ["order", "sort"]:
-            queries[key] = value
-    
+
     try:
         if filter_value and fields:
             field_list = fields.split(",")
             filter_conditions = []
-            
+
             for field in field_list:
-                filter_conditions.append({field: {"ilike": f"%{filter_value}%"}})
-            
+                 # Ensure the filter field exists in the model before adding
+                if field in model_mapper.columns:
+                    # We don't type-convert the filter_value itself here, as 'ilike' expects a string pattern
+                    filter_conditions.append({field: {"ilike": f"%{filter_value}%"}})
+                # else: Optionally warn or error if filter field doesn't exist
+
             # Return combined filter conditions with other queries
-            return {"filter_conditions": filter_conditions, **queries}
-        else:
-            return queries
+            if filter_conditions:
+                queries["filter_conditions"] = filter_conditions
+            # return {"filter_conditions": filter_conditions, **queries}
+        # else:
+        #     return queries
+        return queries # Return queries whether or not filter conditions were added
     except Exception as e:
-        raise HTTPException(status_code=422, detail=f"Error with filter: {str(e)}")
+        # Catch potential errors during filter processing specifically
+        raise HTTPException(status_code=422, detail=f"Error processing filter parameters: {str(e)}")
 
 
 async def get_all_items(db: AsyncSession, model: Type[ModelType]) -> List[ModelType]:
@@ -94,23 +140,29 @@ async def get_all_items(db: AsyncSession, model: Type[ModelType]) -> List[ModelT
 
 
 async def get_items(
-    db: AsyncSession, 
+    db: AsyncSession,
     model: Type[ModelType],
     request: Request,
-    query_params: Dict[str, Any]
+    processed_query: Dict[str, Any]
 ) -> PaginatedResponse:
     """
     Get items with pagination and filtering.
     """
-    options = await list_init_options(request)
-    page = options["page"]
-    limit = options["limit"]
-    
+
+    # Extract pagination options after processing
+    page = processed_query.pop("page", 1)
+    limit = processed_query.pop("size", 10)
+    order = processed_query.pop("order", "asc") # Default order
+    sort_field_name = processed_query.pop("sort", "id") # Default sort field, assuming 'id' exists
+
+    # Build sort dictionary
+    sort_by = build_sort(sort_field_name, order)
+
     # Build base query
     query = select(model)
-    
-    # Apply filters
-    filter_conditions = query_params.pop("filter_conditions", None)
+
+    # Apply filters (ilike from filter_conditions)
+    filter_conditions = processed_query.pop("filter_conditions", None)
     if filter_conditions:
         filter_clauses = []
         for condition in filter_conditions:
@@ -118,36 +170,40 @@ async def get_items(
                 column = getattr(model, field)
                 if "ilike" in value:
                     filter_clauses.append(column.ilike(value["ilike"]))
-        
+
         if filter_clauses:
             query = query.where(or_(*filter_clauses))
-    
-    # Apply other filters
-    for field, value in query_params.items():
+
+    # Apply other filters (now with correct types from processed_query)
+    for field, value in processed_query.items():
         if hasattr(model, field):
+             # Use the pre-validated and type-converted value directly
             query = query.where(getattr(model, field) == value)
-    
+        # else: Decide how to handle query params that are not model fields
+
     # Count total
     count_query = select(func.count()).select_from(query.subquery())
     total = await db.execute(count_query)
     total_count = total.scalar() or 0
-    
+
     # Apply pagination
     query = query.offset((page - 1) * limit).limit(limit)
-    
+
     # Apply sorting
-    sort_field = options["sort"]
-    for field, direction in sort_field.items():
-        column = getattr(model, field)
-        if direction.lower() == "desc":
-            query = query.order_by(column.desc())
-        else:
-            query = query.order_by(column.asc())
-    
+    # sort_field = options["sort"] # Use sort_by dictionary
+    for field, direction in sort_by.items():
+        if hasattr(model, field):
+            column = getattr(model, field)
+            if direction.lower() == "desc":
+                query = query.order_by(column.desc())
+            else:
+                query = query.order_by(column.asc())
+        # else: Optionally raise error if sort field is invalid
+
     # Execute query
     result = await db.execute(query)
     items = result.scalars().all()
-    
+
     # Return paginated response
     return paginate(items=items, total=total_count, page=page, size=limit)
 
@@ -234,4 +290,23 @@ async def delete_item(db: AsyncSession, model: Type[ModelType], id: int) -> Opti
         return item
     except Exception as e:
         await db.rollback()
-        raise HTTPException(status_code=422, detail=f"Error deleting item: {str(e)}") 
+        raise HTTPException(status_code=422, detail=f"Error deleting item: {str(e)}")
+
+
+async def delete_items_by_ids(db: AsyncSession, model: Type[ModelType], ids: List[int]) -> int:
+    """
+    Delete multiple items by their IDs.
+    Returns the number of rows deleted.
+    """
+    if not ids:
+        return 0  # No IDs provided, nothing to delete
+
+    try:
+        stmt = sqlalchemy_delete(model).where(model.id.in_(ids))
+        result = await db.execute(stmt)
+        await db.commit()
+        return result.rowcount
+    except Exception as e:
+        await db.rollback()
+        # Consider logging the error here
+        raise HTTPException(status_code=500, detail=f"Error performing bulk delete: {str(e)}") 

@@ -10,8 +10,8 @@ from app.schemas.assistant import AssistantCreate, AssistantUpdate
 
 router = APIRouter()
 
-@router.get("/", response_model=dict)
-async def list_assistants(
+@router.get("/all", response_model=dict)
+async def list_all_assistants(
     request: Request,
     response: Response,
     db: AsyncSession = Depends(get_db)
@@ -21,8 +21,8 @@ async def list_assistants(
     """
     return await assistant_controller.list_all(request, db)
 
-@router.get("/paginated", response_model=dict)
-async def list_assistants_paginated(
+@router.get("/", response_model=dict)
+async def list_assistants(
     request: Request,
     response: Response,
     db: AsyncSession = Depends(get_db)
@@ -80,3 +80,15 @@ async def delete_assistant(
     Delete an assistant.
     """
     return await assistant_controller.delete(id, request, db) 
+
+# batch delete
+@router.delete("/batch", response_model=dict)
+async def delete_assistants(
+    request: Request,
+    response: Response,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Delete multiple assistants.
+    """
+    return await assistant_controller.delete_many(request, db)
