@@ -38,7 +38,6 @@ async def update(id: str, assistant_in: AssistantUpdate, request: Request, db: A
     try:
         # Validate ID
         valid_id = is_id_valid(id)
-        
         # Update item
         item = await update_item(db, Assistant, valid_id, assistant_in)
         if not item:

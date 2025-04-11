@@ -49,6 +49,21 @@ def item_already_exists(error: Optional[Exception], item: Any, message: str = "I
         raise build_error_object(status.HTTP_409_CONFLICT, message)
 
 
+def safe_serialize(obj):
+    """Converts bytes to string representation for JSON serialization."""
+    if isinstance(obj, bytes):
+        try:
+            return obj.decode('utf-8', errors='replace') # Try decoding
+        except Exception:
+            return repr(obj) # Fallback to repr if decoding fails
+    elif isinstance(obj, list):
+        return [safe_serialize(item) for item in obj]
+    elif isinstance(obj, dict):
+        return {key: safe_serialize(value) for key, value in obj.items()}
+    # Add handling for other non-serializable types if needed
+    return obj
+
+
 async def handle_error(arg1: Any, error: Optional[Exception] = None) -> JSONResponse:
     """
     Handle error and return appropriate response.
@@ -144,8 +159,17 @@ async def handle_error(arg1: Any, error: Optional[Exception] = None) -> JSONResp
     elif isinstance(actual_error, RequestValidationError):
         status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
         validation_errors = actual_error.errors()
-        # Format validation errors for the notification
-        error_details_str = json.dumps(validation_errors, indent=2)
+        
+        # Preprocess errors to handle non-serializable types like bytes
+        safe_validation_errors = safe_serialize(validation_errors)
+
+        # Format validation errors for the notification using the safe version
+        try:
+            error_details_str = json.dumps(safe_validation_errors, indent=2)
+        except Exception as json_exc:
+            logger.error(f"Could not serialize validation errors to JSON: {json_exc}")
+            error_details_str = repr(safe_validation_errors) # Fallback to repr
+
         http_info = (
             f"Validation Error Details:\n{error_details_str}\n\n"
         )
@@ -202,7 +226,7 @@ async def handle_error(arg1: Any, error: Optional[Exception] = None) -> JSONResp
         "ok": False, 
         "errors": {
             "msg": str(actual_error.detail) if isinstance(actual_error, HTTPException) else 
-                   (actual_error.errors() if isinstance(actual_error, RequestValidationError) else str(actual_error))
+                   (safe_serialize(actual_error.errors()) if isinstance(actual_error, RequestValidationError) else str(actual_error))
         }
     }
     
