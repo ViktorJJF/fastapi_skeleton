@@ -41,37 +41,79 @@ async def list_init_options(request: Request) -> Dict[str, Any]:
     }
 
 
-async def check_query_string(query_params: Dict[str, Any], model: Type[ModelType]) -> Dict[str, Any]:
+async def check_query_string(query_params: Union[Dict[str, Any], "PaginationParams"], model: Type[ModelType]) -> Dict[str, Any]:
     """
     Process query parameters for filtering, converting types based on the model.
+    Can accept either a dictionary of query parameters or a PaginationParams object.
     """
     queries = {}
-    filter_value = query_params.get("filter")
-    fields = query_params.get("fields")
     model_mapper = inspect(model)
 
-    # Process pagination parameters
-    try:
-        page = int(query_params.get("page", "1"))
-    except ValueError:
-        page = 1
+    # Check if input is a PaginationParams object
+    if hasattr(query_params, "model_dump"):
+        # Convert PaginationParams to dictionary
+        pagination_dict = query_params.model_dump(exclude_unset=True)
+        
+        # Process pagination parameters
+        queries["page"] = pagination_dict.get("page", 1)
+        queries["size"] = pagination_dict.get("size", 10)
+        queries["sort"] = pagination_dict.get("sort_by") or "created_at"
+        queries["order"] = pagination_dict.get("sort_order") or "asc"
+        
+        # Add search parameter if provided
+        if pagination_dict.get("search"):
+            queries["filter"] = pagination_dict.get("search")
+            queries["fields"] = "name,description"  # Fields to search in
+    else:
+        # Process as dictionary (for backwards compatibility)
+        filter_value = query_params.get("filter")
+        fields = query_params.get("fields")
+        
+        # Process pagination parameters
+        try:
+            page = int(query_params.get("page", "1"))
+        except ValueError:
+            page = 1
 
-    try:
-        size = int(query_params.get("size", "10"))
-    except ValueError:
-        size = 10
+        try:
+            size = int(query_params.get("size", "10"))
+        except ValueError:
+            size = 10
 
-    # Add processed pagination parameters
-    queries["page"] = page
-    queries["size"] = size
-
-    # Copy other query params, attempting type conversion for model fields
-    for key, value in query_params.items():
-        if key in ["filter", "fields", "page", "size", "limit", "order", "sort"]:
+        # Add processed pagination parameters
+        queries["page"] = page
+        queries["size"] = size
+        
+        # Copy other query params
+        for key, value in query_params.items():
+            if key in ["filter", "fields", "page", "size", "limit"]:
+                continue  # Skip special keys already handled
+            
             if key in ["order", "sort"]:
-                 queries[key] = value # Keep sort/order as strings
-            continue # Skip special keys already handled or to be handled separately
+                queries[key] = value  # Keep sort/order as strings
+                continue
+            
+            # Process other parameters
+            queries[key] = value
 
+        # Setup filter parameters
+        if filter_value and fields:
+            queries["filter"] = filter_value
+            queries["fields"] = fields
+            
+    # Process query parameters for type conversion based on model columns
+    processed_queries = {}
+    for key, value in queries.items():
+        # Skip special pagination keys
+        if key in ["filter", "fields", "filter_conditions"]:
+            processed_queries[key] = value
+            continue
+            
+        # For pagination-specific parameters, just copy them
+        if key in ["page", "size", "sort", "order"]:
+            processed_queries[key] = value
+            continue
+            
         # Check if the key is a column in the model
         if key in model_mapper.columns:
             column = model_mapper.columns[key]
@@ -85,17 +127,17 @@ async def check_query_string(query_params: Dict[str, Any], model: Type[ModelType
                     elif isinstance(value, str) and value.lower() in ['false', '0']:
                         converted_value = False
                     elif isinstance(value, (bool, int)):
-                         converted_value = bool(value)
+                        converted_value = bool(value)
                     else:
                         raise ValueError(f"Invalid boolean value for {key}: {value}")
                 elif target_type is datetime:
                     # Add more robust datetime parsing if needed (e.g., different formats)
                     converted_value = datetime.fromisoformat(value)
                 else:
-                     # General conversion for int, float, etc.
+                    # General conversion for int, float, etc.
                     converted_value = target_type(value)
 
-                queries[key] = converted_value
+                processed_queries[key] = converted_value
             except (ValueError, TypeError) as e:
                 raise HTTPException(
                     status_code=400,
@@ -103,28 +145,26 @@ async def check_query_string(query_params: Dict[str, Any], model: Type[ModelType
                 )
         else:
             # If not a model column, keep it as is (string)
-            # Or decide if non-model query params should be allowed/ignored
-            queries[key] = value
+            processed_queries[key] = value
 
+    # Process filter conditions
     try:
-        if filter_value and fields:
-            field_list = fields.split(",")
+        if processed_queries.get("filter") and processed_queries.get("fields"):
+            field_list = processed_queries["fields"].split(",")
             filter_conditions = []
 
             for field in field_list:
-                 # Ensure the filter field exists in the model before adding
+                # Ensure the filter field exists in the model before adding
                 if field in model_mapper.columns:
                     # We don't type-convert the filter_value itself here, as 'ilike' expects a string pattern
-                    filter_conditions.append({field: {"ilike": f"%{filter_value}%"}})
+                    filter_conditions.append({field: {"ilike": f"%{processed_queries['filter']}%"}})
                 # else: Optionally warn or error if filter field doesn't exist
 
             # Return combined filter conditions with other queries
             if filter_conditions:
-                queries["filter_conditions"] = filter_conditions
-            # return {"filter_conditions": filter_conditions, **queries}
-        # else:
-        #     return queries
-        return queries # Return queries whether or not filter conditions were added
+                processed_queries["filter_conditions"] = filter_conditions
+        
+        return processed_queries  # Return processed queries
     except Exception as e:
         # Catch potential errors during filter processing specifically
         raise HTTPException(status_code=422, detail=f"Error processing filter parameters: {str(e)}")
@@ -146,7 +186,41 @@ async def get_items(
     processed_query: Dict[str, Any]
 ) -> PaginatedResponse:
     """
-    Get items with pagination and filtering.
+    Get items with pagination, sorting, and filtering.
+    
+    Parameters:
+    -----------
+    db: AsyncSession
+        The database session.
+    model: Type[ModelType]
+        The SQLAlchemy model class to query.
+    request: Request
+        The FastAPI request object containing query parameters.
+    processed_query: Dict[str, Any]
+        Processed query parameters with proper type conversion.
+        
+    Query Parameters:
+    ----------------
+    page: int
+        Page number (default: 1)
+    size/limit: int
+        Number of items per page (default: 10)
+    sort: str
+        Field name to sort by (default: "created_at")
+    order: str
+        Sort order, "asc" or "desc" (default: "asc")
+    filter: str
+        Text to search across specified fields
+    fields: str
+        Comma-separated list of fields to apply the filter on
+        
+    Additional model-specific filters can be provided as query parameters.
+    Any parameter that matches a column name in the model will be used for filtering.
+    
+    Returns:
+    --------
+    PaginatedResponse
+        A paginated response containing the items and pagination metadata.
     """
 
     # Extract pagination options after processing

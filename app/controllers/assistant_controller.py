@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 
 from app.models.assistant import Assistant
 from app.schemas.assistant import AssistantCreate, AssistantUpdate, Assistant as AssistantSchema, AssistantDeleteManyInput
+from app.schemas.core.paginations import PaginationParams
 from app.utils.db_helpers import (
     get_all_items,
     get_items,
@@ -75,7 +76,7 @@ async def delete(id: str, request: Request, db: AsyncSession) -> JSONResponse:
         return await handle_error(request, e)
 
 
-async def delete_many(item: AssistantDeleteManyInput, request: Request, db: AsyncSession) -> JSONResponse:
+async def delete_many(request: Request, item: AssistantDeleteManyInput, db: AsyncSession) -> JSONResponse:
     """
     Delete multiple assistants by their IDs.
     """
@@ -104,9 +105,6 @@ async def delete_many(item: AssistantDeleteManyInput, request: Request, db: Asyn
 
         # Use the helper function for bulk delete
         deleted_count = await delete_items_by_ids(db, Assistant, valid_ids)
-
-        # No need to commit here, helper function handles it.
-        # await db.commit() # Remove this line
 
         return JSONResponse(
             status_code=status.HTTP_200_OK,
@@ -161,13 +159,13 @@ async def list_all(request: Request, db: AsyncSession) -> JSONResponse:
         return await handle_error(request, e)
 
 
-async def list_paginated(request: Request, db: AsyncSession) -> JSONResponse:
+async def list_paginated(request: Request, pagination: PaginationParams, db: AsyncSession) -> JSONResponse:
     """
     List assistants with pagination.
     """
     try:
-        query_params = dict(request.query_params)
-        processed_query = await check_query_string(query_params, Assistant)
+        # Pass the pagination model directly to check_query_string
+        processed_query = await check_query_string(pagination, Assistant)
         result = await get_items(db, Assistant, request, processed_query)
         
         # Convert items using to_dict

@@ -1,52 +1,40 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any
+from typing import List, Any
 from datetime import datetime
 
 
 class AssistantBase(BaseModel):
-    """
-    Base schema for assistant data.
-    """
-    name: Optional[str] = None
-    description: Optional[str] = None
+    """Base model for assistant attributes."""
+    name: str | None = Field(None, description="The name of the assistant")
+    description: str | None = Field(None, description="A description of the assistant's purpose and capabilities")
 
 
 class AssistantCreate(AssistantBase):
-    """
-    Schema for creating a new assistant.
-    """
-    name: str = Field(..., min_length=1, max_length=100)
+    """Model used when creating an assistant."""
+    name: str = Field(..., min_length=1, max_length=100, description="The name of the assistant")
 
 
 class AssistantUpdate(AssistantBase):
-    """
-    Schema for updating an assistant.
-    """
+    """Model used when updating an assistant."""
     pass
 
 
 class AssistantInDBBase(AssistantBase):
-    """
-    Base schema for assistant in database.
-    """
-    id: int
-    created_at: datetime
-    updated_at: datetime
+    """Base model for assistant in database."""
+    id: int = Field(..., description="The unique identifier of the assistant")
+    created_at: datetime = Field(..., description="Timestamp when the assistant was created")
+    updated_at: datetime = Field(..., description="Timestamp when the assistant was last updated")
 
-    class Config:
-        orm_mode = True
-        from_attributes = True
+    model_config = {
+        "from_attributes": True
+    }
 
 
 class Assistant(AssistantInDBBase):
-    """
-    Schema for assistant response.
-    """
+    """Model used when reading an assistant."""
     pass
 
 
 class AssistantDeleteManyInput(BaseModel):
-    """
-    Schema for deleting multiple assistants by their IDs.
-    """
-    ids: List[str] = Field(..., description="A list of assistant IDs to delete.") 
+    """Input model for batch deletion of assistants."""
+    ids: List[str] = Field(..., description="A list of assistant IDs to delete") 
