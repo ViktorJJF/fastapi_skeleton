@@ -9,17 +9,24 @@ if os.getenv("PYTHON_ENV") == "development":
     from dotenv import load_dotenv
     load_dotenv()
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from loguru import logger
-
 
 from app.routes.v1.api import api_router
 from app.core.config import config
 from app.database.redis import redis_client  # Import from database package instead of direct file
 from app.middlewares.logging_middleware import logging_middleware
-from app.utils.error_handling import setup_global_exception_handler
+from app.utils.error_handling import setup_global_exception_handler, handle_error
 
+# --- Define the exception handler --- 
+async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    """Custom handler for FastAPI validation errors."""
+    logger.warning(f"Caught validation error: {exc.errors()}")
+    # Use our existing handle_error function
+    return await handle_error(request, exc)
 
 def create_application() -> FastAPI:
     """
@@ -49,6 +56,9 @@ def create_application() -> FastAPI:
 
     # Include API router
     app.include_router(api_router, prefix=config.API_V1_STR)
+
+    # --- Register the custom handler AFTER app creation --- 
+    app.add_exception_handler(RequestValidationError, validation_exception_handler)
 
     # Define lifespan context manager instead of using on_event
     @asynccontextmanager

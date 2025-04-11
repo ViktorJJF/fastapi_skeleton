@@ -68,4 +68,7 @@ async def logging_middleware(request: Request, call_next):
                 telegram_notifier.send_error_notification(str(exc), tb)
             
             # Return a proper error response (use only the error parameter)
-            return handle_error(exc) 
+            # Note: We don't have the request object readily available here 
+            # in the way handle_error expects for detailed reporting. 
+            # It will log the error and traceback, but HTTP details might be limited.
+            return await handle_error(exc) 

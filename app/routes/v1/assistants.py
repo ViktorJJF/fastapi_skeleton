@@ -42,7 +42,7 @@ async def get_assistant(
     """
     Get an assistant by ID.
     """
-    return await assistant_controller.get_one(id, db)
+    return await assistant_controller.get_one(id, request, db)
 
 @router.post("/", response_model=dict, status_code=status.HTTP_201_CREATED)
 async def create_assistant(
@@ -54,7 +54,7 @@ async def create_assistant(
     """
     Create a new assistant.
     """
-    return await assistant_controller.create(assistant, db)
+    return await assistant_controller.create(assistant, request, db)
 
 @router.put("/{id}", response_model=dict)
 async def update_assistant(
@@ -67,7 +67,7 @@ async def update_assistant(
     """
     Update an assistant.
     """
-    return await assistant_controller.update(id, assistant, db)
+    return await assistant_controller.update(id, assistant, request, db)
 
 @router.delete("/{id}", response_model=dict)
 async def delete_assistant(
@@ -79,4 +79,4 @@ async def delete_assistant(
     """
     Delete an assistant.
     """
-    return await assistant_controller.delete(id, db) 
+    return await assistant_controller.delete(id, request, db) 

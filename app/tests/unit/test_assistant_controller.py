@@ -1,14 +1,16 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from fastapi import status
+from fastapi import status, HTTPException
+import json
 
 from app.controllers import assistant_controller
 from app.models.assistant import Assistant
 from app.schemas.assistant import AssistantCreate, AssistantUpdate
+from fastapi import Request
 
 
 @pytest.mark.asyncio
-async def test_create_assistant():
+async def test_create_assistant(mock_db, mock_create_item):
     """
     Test creating an assistant.
     """
@@ -29,8 +31,14 @@ async def test_create_assistant():
         "updated_at": "2023-01-01T00:00:00"
     }
     
+    mock_request = MagicMock(spec=Request)
+    mock_request.headers = {}
+    mock_request.url = "http://testserver/api/v1/assistants/"
+    mock_request.method = "POST"
+    mock_request.body = AsyncMock(return_value=b'{"name": "Test Create", "model": "gpt-4"}') # Mock async body read
+
     with patch("app.controllers.assistant_controller.create_item", new=AsyncMock(return_value=mock_assistant)) as mock_create:
-        response = await assistant_controller.create(assistant_in, mock_db)
+        response = await assistant_controller.create(assistant_in, mock_request, mock_db)
         
         # Check that create_item was called with correct arguments
         mock_create.assert_called_once_with(mock_db, Assistant, assistant_data)
@@ -41,7 +49,7 @@ async def test_create_assistant():
 
 
 @pytest.mark.asyncio
-async def test_update_assistant():
+async def test_update_assistant(mock_db, mock_update_item):
     """
     Test updating an assistant.
     """
@@ -66,9 +74,15 @@ async def test_update_assistant():
         "updated_at": "2023-01-01T00:00:00"
     }
     
+    mock_request = MagicMock(spec=Request)
+    mock_request.headers = {}
+    mock_request.url = f"http://testserver/api/v1/assistants/{assistant_id}"
+    mock_request.method = "PUT"
+    mock_request.body = AsyncMock(return_value=b'{"name": "Updated Name"}')
+
     with patch("app.controllers.assistant_controller.is_id_valid", return_value=mock_valid_id) as mock_id_valid, \
          patch("app.controllers.assistant_controller.update_item", new=AsyncMock(return_value=mock_assistant)) as mock_update:
-        response = await assistant_controller.update(assistant_id, assistant_update, mock_db)
+        response = await assistant_controller.update(assistant_id, assistant_update, mock_request, mock_db)
         
         # Check that the functions were called with correct arguments
         mock_id_valid.assert_called_once_with(assistant_id)
@@ -111,7 +125,7 @@ async def test_update_nonexistent_assistant():
 
 
 @pytest.mark.asyncio
-async def test_delete_assistant():
+async def test_delete_assistant(mock_db, mock_delete_item):
     """
     Test deleting an assistant.
     """
@@ -127,9 +141,15 @@ async def test_delete_assistant():
     # Mock the delete_item function
     mock_assistant = MagicMock(spec=Assistant)
     
+    mock_request = MagicMock(spec=Request)
+    mock_request.headers = {}
+    mock_request.url = f"http://testserver/api/v1/assistants/{assistant_id}"
+    mock_request.method = "DELETE"
+    mock_request.body = AsyncMock(return_value=b'') # No body for delete typically
+
     with patch("app.controllers.assistant_controller.is_id_valid", return_value=mock_valid_id) as mock_id_valid, \
          patch("app.controllers.assistant_controller.delete_item", new=AsyncMock(return_value=mock_assistant)) as mock_delete:
-        response = await assistant_controller.delete(assistant_id, mock_db)
+        response = await assistant_controller.delete(assistant_id, mock_request, mock_db)
         
         # Check that the functions were called with correct arguments
         mock_id_valid.assert_called_once_with(assistant_id)
@@ -170,69 +190,70 @@ async def test_delete_nonexistent_assistant():
 
 
 @pytest.mark.asyncio
-async def test_get_one_assistant():
+async def test_get_one_assistant(mock_db, mock_get_item):
     """
-    Test getting an assistant by ID.
+    Test get_one assistant successfully.
     """
     # Mock data
-    assistant_id = "1"
+    assistant_id = 1
+    test_assistant = Assistant(
+        id=assistant_id,
+        name="Test Assistant",
+        model="test-model",
+        instructions="Test instructions"
+    )
     
-    # Mock the database session
-    mock_db = AsyncMock()
+    # Configure mocks
+    mock_get_item.return_value = test_assistant
     
-    # Mock the is_id_valid function
-    mock_valid_id = 1
+    # Create a mock request
+    mock_request = MagicMock()
+    mock_request.headers = {"Content-Type": "application/json"}
+    mock_request.url = "http://testserver/api/v1/assistants/1"
+    mock_request.method = "GET"
     
-    # Mock the get_item function
-    mock_assistant = MagicMock(spec=Assistant)
-    mock_assistant.to_dict.return_value = {
-        "id": 1, 
-        "name": "Test Assistant", 
-        "description": "Test description",
-        "created_at": "2023-01-01T00:00:00",
-        "updated_at": "2023-01-01T00:00:00"
-    }
+    # Execute
+    response = await assistant_controller.get_one(assistant_id, mock_request, mock_db)
     
-    with patch("app.controllers.assistant_controller.is_id_valid", return_value=mock_valid_id) as mock_id_valid, \
-         patch("app.controllers.assistant_controller.get_item", new=AsyncMock(return_value=mock_assistant)) as mock_get:
-        response = await assistant_controller.get_one(assistant_id, mock_db)
-        
-        # Check that the functions were called with correct arguments
-        mock_id_valid.assert_called_once_with(assistant_id)
-        mock_get.assert_called_once_with(mock_db, Assistant, mock_valid_id)
-        
-        # Check the response
-        assert response.status_code == status.HTTP_200_OK
-        assert response.body.decode() == '{"ok":true,"payload":{"id":1,"name":"Test Assistant","description":"Test description","created_at":"2023-01-01T00:00:00","updated_at":"2023-01-01T00:00:00"}}'
+    # Assert
+    assert response.status_code == 200
+    response_data = json.loads(response.body)
+    assert response_data["ok"] is True
+    assert response_data["payload"]["id"] == assistant_id
+    assert response_data["payload"]["name"] == "Test Assistant"
+    
+    # Verify mock calls
+    mock_get_item.assert_called_once_with(mock_db, Assistant, assistant_id)
 
 
 @pytest.mark.asyncio
-async def test_get_nonexistent_assistant():
+async def test_get_one_assistant_not_found(mock_db, mock_get_item):
     """
-    Test getting a nonexistent assistant.
+    Test get_one assistant not found.
     """
     # Mock data
-    assistant_id = "1"
+    assistant_id = 999
     
-    # Mock the database session
-    mock_db = AsyncMock()
+    # Configure mocks
+    mock_get_item.return_value = None
     
-    # Mock the is_id_valid function
-    mock_valid_id = 1
+    # Create a mock request
+    mock_request = MagicMock(spec=Request)
+    mock_request.headers = {}
+    mock_request.url = f"http://testserver/api/v1/assistants/{assistant_id}"
+    mock_request.method = "GET"
+    mock_request.body = AsyncMock(return_value=b'')
+
+    # The controller raises HTTPException, which FastAPI handles.
+    # If we wanted to test handle_error being called, we'd mock it.
+    # Here, we just test that the correct exception is raised by the controller logic.
+    with pytest.raises(HTTPException) as excinfo:
+        await assistant_controller.get_one(assistant_id, mock_request, mock_db)
     
-    # Mock the get_item function to return None (assistant not found)
-    with patch("app.controllers.assistant_controller.is_id_valid", return_value=mock_valid_id) as mock_id_valid, \
-         patch("app.controllers.assistant_controller.get_item", new=AsyncMock(return_value=None)) as mock_get:
-        response = await assistant_controller.get_one(assistant_id, mock_db)
-        
-        # Check that the functions were called with correct arguments
-        mock_id_valid.assert_called_once_with(assistant_id)
-        mock_get.assert_called_once_with(mock_db, Assistant, mock_valid_id)
-        
-        # Check the response
-        assert response.status_code == status.HTTP_404_NOT_FOUND
-        assert '"error":' in response.body.decode()
-        assert '"ok":false' in response.body.decode()
+    assert excinfo.value.status_code == 404
+    
+    # Verify mock calls
+    mock_get_item.assert_called_once_with(mock_db, Assistant, assistant_id)
 
 
 @pytest.mark.asyncio

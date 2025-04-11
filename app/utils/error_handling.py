@@ -1,4 +1,5 @@
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from typing import Any, Dict, Optional, Union
 import os
@@ -7,6 +8,7 @@ import logging
 import traceback
 import asyncio
 from loguru import logger
+import json
 
 from app.core.notifications import telegram_notifier
 
@@ -47,58 +49,166 @@ def item_already_exists(error: Optional[Exception], item: Any, message: str = "I
         raise build_error_object(status.HTTP_409_CONFLICT, message)
 
 
-def handle_error(response_or_error: Any, error: Any = None) -> JSONResponse:
+async def handle_error(arg1: Any, error: Optional[Exception] = None) -> JSONResponse:
     """
     Handle error and return appropriate response.
-    Logs error in development environments and builds and sends an error response.
+    Logs error, sends notification, and builds the JSON response.
     
     Args:
-        response_or_error: Either a Response object (for backward compatibility) or the error itself
-        error: Error object to be handled (optional, for backward compatibility)
+        arg1: Either the error itself (if error=None) or the Request object.
+        error: The actual exception (if arg1 is the Request object).
     
     Returns:
-        JSONResponse: A formatted JSON response with error details
+        JSONResponse: A formatted JSON response with error details.
     """
-    # Handle both new and old calling conventions
+    actual_error: Exception
+    request: Optional[Request] = None
+
     if error is None:
-        # New style: handle_error(error)
-        actual_error = response_or_error
+        # Calling convention: handle_error(actual_error)
+        if isinstance(arg1, Exception):
+            actual_error = arg1
+        else:
+            # Fallback if called incorrectly, treat arg1 as the error message
+            actual_error = Exception(str(arg1))
+            logger.warning(f"handle_error called with one argument, but it wasn't an Exception: {arg1}")
     else:
-        # Old style: handle_error(response, error)
+        # Calling convention: handle_error(request, actual_error)
         actual_error = error
-    
+        if isinstance(arg1, Request):
+            request = arg1
+        else:
+            logger.warning("handle_error called with two arguments, but the first was not a FastAPI Request object.")
+            # Attempt to proceed without request details
+
     # Log the error message and the full traceback for detailed debugging
-    error_message = f"Error: {str(actual_error)}"
+    error_message = f"Error: {type(actual_error).__name__}: {str(actual_error)}"
     traceback_info = traceback.format_exc()
     
-    # Use loguru instead of standard logging
-    logger.opt(exception=True).error(f"{error_message}")
+    # Use loguru for logging
+    logger.opt(exception=actual_error).error(f"Handling error: {error_message}")
     
-    # Send notification to Telegram asynchronously in background
-    # This won't block response generation
-    telegram_notifier.send_error_notification(str(actual_error), traceback_info)
-    
-    # Format the error response
+    # Prepare details for notification
+    notification_error_message = str(actual_error)
+    notification_traceback = traceback_info
+
+    # Extract HTTP-specific information if it's an HTTPException and we have a request
+    http_info = ""
+    status_code = status.HTTP_500_INTERNAL_SERVER_ERROR # Default
+
     if isinstance(actual_error, HTTPException):
-        return JSONResponse(
-            status_code=actual_error.status_code,
-            content={
-                "ok": False, 
-                "errors": {
-                    "msg": actual_error.detail
-                }
-            }
+        status_code = actual_error.status_code # Use HTTPException's status code
+        if request:
+            headers = {}
+            endpoint = "Unknown"
+            body = "Unavailable"
+            method = "Unknown"
+            
+            # Extract information from request
+            if hasattr(request, 'headers'):
+                # Sanitize headers
+                headers = {k: ('******' if k.lower() in ['authorization', 'api-key', 'x-api-key', 'secret'] else v) 
+                           for k, v in request.headers.items()}
+            
+            if hasattr(request, 'url') and request.url:
+                endpoint = str(request.url)
+            
+            if hasattr(request, 'method'):
+                method = request.method
+            
+            # Safely try to read request body asynchronously
+            try:
+                body_bytes = await request.body()
+                if body_bytes:
+                    body = body_bytes.decode('utf-8', errors='replace')
+                else:
+                    body = "(Empty body)"
+            except Exception as body_exc:
+                logger.warning(f"Could not read request body asynchronously: {body_exc}")
+                body = f"(Error reading body: {body_exc})"
+
+            http_info = (
+                f"HTTP Details:\n"
+                f"Method: {method}\n"
+                f"Endpoint: {endpoint}\n"
+                f"Status Code: {status_code}\n"
+                f"Headers: {headers}\n"
+                f"Body: {body}\n\n"
+            )
+            notification_traceback = http_info + traceback_info
+        else:
+             # HTTPException but no request object available
+             http_info = f"HTTP Status Code: {status_code}\n(No request details available)\n\n"
+             notification_traceback = http_info + traceback_info
+
+    elif isinstance(actual_error, RequestValidationError):
+        status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+        validation_errors = actual_error.errors()
+        # Format validation errors for the notification
+        error_details_str = json.dumps(validation_errors, indent=2)
+        http_info = (
+            f"Validation Error Details:\n{error_details_str}\n\n"
         )
-    
-    # Default to 500 error
-    return JSONResponse(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={
-            "ok": False, 
-            "errors": {
-                "msg": str(actual_error)
-            }
+        # Prepend HTTP info if request is available
+        if request:
+            headers = {}
+            endpoint = "Unknown"
+            body = "Unavailable"
+            method = "Unknown"
+            
+            # Extract information from request
+            if hasattr(request, 'headers'):
+                # Sanitize headers
+                headers = {k: ('******' if k.lower() in ['authorization', 'api-key', 'x-api-key', 'secret'] else v) 
+                           for k, v in request.headers.items()}
+            
+            if hasattr(request, 'url') and request.url:
+                endpoint = str(request.url)
+            
+            if hasattr(request, 'method'):
+                method = request.method
+            
+            # Safely try to read request body asynchronously
+            try:
+                body_bytes = await request.body()
+                if body_bytes:
+                    body = body_bytes.decode('utf-8', errors='replace')
+                else:
+                    body = "(Empty body)"
+            except Exception as body_exc:
+                logger.warning(f"Could not read request body asynchronously: {body_exc}")
+                body = f"(Error reading body: {body_exc})"
+
+            http_info = (
+                f"HTTP Details:\n"
+                f"Method: {method}\n"
+                f"Endpoint: {endpoint}\n"
+                f"Status Code: {status_code}\n"
+                f"Headers: {headers}\n"
+                f"Body: {body}\n\n"
+                f"\nValidation Error Details:\n{error_details_str}\n\n"
+            )
+            notification_traceback = http_info + traceback_info
+        notification_error_message = "Request Validation Error"
+
+    # Send notification
+    try:
+        telegram_notifier.send_error_notification(notification_error_message, notification_traceback)
+    except Exception as send_error:
+        logger.error(f"Failed to send Telegram notification: {send_error}")
+
+    # Format the JSON response
+    response_content = {
+        "ok": False, 
+        "errors": {
+            "msg": str(actual_error.detail) if isinstance(actual_error, HTTPException) else 
+                   (actual_error.errors() if isinstance(actual_error, RequestValidationError) else str(actual_error))
         }
+    }
+    
+    return JSONResponse(
+        status_code=status_code,
+        content=response_content
     )
 
 
