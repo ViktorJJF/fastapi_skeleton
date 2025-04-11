@@ -46,9 +46,26 @@ async def check_query_string(query_params: Dict[str, Any]) -> Dict[str, Any]:
     filter_value = query_params.get("filter")
     fields = query_params.get("fields")
     
-    # Copy other query params except filter, fields, and page
+    # Process pagination parameters
+    try:
+        page = int(query_params.get("page", "1"))
+    except ValueError:
+        page = 1
+    
+    try:
+        size = int(query_params.get("size", "10"))
+    except ValueError:
+        size = 10
+    
+    # Add processed pagination parameters
+    queries["page"] = page
+    queries["size"] = size
+    
+    # Copy other query params except filter, fields, page, and size
     for key, value in query_params.items():
-        if key not in ["filter", "fields", "page", "limit", "order", "sort"]:
+        if key not in ["filter", "fields", "page", "size", "limit", "order", "sort"]:
+            queries[key] = value
+        elif key in ["order", "sort"]:
             queries[key] = value
     
     try:
@@ -143,9 +160,6 @@ async def get_item(db: AsyncSession, model: Type[ModelType], id: int) -> Optiona
     result = await db.execute(query)
     item = result.scalars().first()
     
-    if not item:
-        raise HTTPException(status_code=404, detail="Item not found")
-    
     return item
 
 
@@ -178,14 +192,14 @@ async def create_item(db: AsyncSession, model: Type[ModelType], data: Dict[str, 
         raise HTTPException(status_code=422, detail=f"Error creating item: {str(e)}")
 
 
-async def update_item(db: AsyncSession, model: Type[ModelType], id: int, data: Dict[str, Any]) -> ModelType:
+async def update_item(db: AsyncSession, model: Type[ModelType], id: int, data: Dict[str, Any]) -> Optional[ModelType]:
     """
     Update an existing item.
     """
     item = await get_item(db, model, id)
     
     if not item:
-        raise HTTPException(status_code=404, detail="Item not found")
+        return None
     
     for field, value in data.items():
         if hasattr(item, field):
@@ -201,14 +215,14 @@ async def update_item(db: AsyncSession, model: Type[ModelType], id: int, data: D
         raise HTTPException(status_code=422, detail=f"Error updating item: {str(e)}")
 
 
-async def delete_item(db: AsyncSession, model: Type[ModelType], id: int) -> ModelType:
+async def delete_item(db: AsyncSession, model: Type[ModelType], id: int) -> Optional[ModelType]:
     """
     Delete an item.
     """
     item = await get_item(db, model, id)
     
     if not item:
-        raise HTTPException(status_code=404, detail="Item not found")
+        return None
     
     try:
         await db.delete(item)

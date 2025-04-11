@@ -17,7 +17,7 @@ async def test_create_assistant():
     assistant_in = AssistantCreate(**assistant_data)
     
     # Mock the database session
-    mock_db = AsyncMock()
+    mock_db = MagicMock()
     
     # Mock the create_item function
     mock_assistant = MagicMock(spec=Assistant)
@@ -106,7 +106,7 @@ async def test_update_nonexistent_assistant():
         
         # Check the response
         assert response.status_code == status.HTTP_404_NOT_FOUND
-        assert '"error":' in response.body.decode()
+        assert '"errors":' in response.body.decode()
         assert '"ok":false' in response.body.decode()
 
 
@@ -165,7 +165,7 @@ async def test_delete_nonexistent_assistant():
         
         # Check the response
         assert response.status_code == status.HTTP_404_NOT_FOUND
-        assert '"error":' in response.body.decode()
+        assert '"errors":' in response.body.decode()
         assert '"ok":false' in response.body.decode()
 
 
@@ -231,7 +231,7 @@ async def test_get_nonexistent_assistant():
         
         # Check the response
         assert response.status_code == status.HTTP_404_NOT_FOUND
-        assert '"error":' in response.body.decode()
+        assert '"errors":' in response.body.decode()
         assert '"ok":false' in response.body.decode()
 
 

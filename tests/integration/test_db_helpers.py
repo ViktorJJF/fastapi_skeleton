@@ -15,7 +15,7 @@ from app.utils.db_helpers import (
 
 
 @pytest.mark.asyncio
-async def test_create_and_get_item(test_db: AsyncSession):
+async def test_create_and_get_item(db_session: AsyncSession):
     """
     Test creating and then retrieving an item.
     """
@@ -26,7 +26,7 @@ async def test_create_and_get_item(test_db: AsyncSession):
     }
     
     # Create the item
-    created_assistant = await create_item(test_db, Assistant, assistant_data)
+    created_assistant = await create_item(db_session, Assistant, assistant_data)
     
     # Verify the item was created correctly
     assert created_assistant is not None
@@ -35,7 +35,7 @@ async def test_create_and_get_item(test_db: AsyncSession):
     assert created_assistant.id is not None
     
     # Get the item by ID
-    retrieved_assistant = await get_item(test_db, Assistant, created_assistant.id)
+    retrieved_assistant = await get_item(db_session, Assistant, created_assistant.id)
     
     # Verify the item was retrieved correctly
     assert retrieved_assistant is not None
@@ -45,7 +45,7 @@ async def test_create_and_get_item(test_db: AsyncSession):
 
 
 @pytest.mark.asyncio
-async def test_update_item(test_db: AsyncSession):
+async def test_update_item(db_session: AsyncSession):
     """
     Test updating an item.
     """
@@ -56,13 +56,13 @@ async def test_update_item(test_db: AsyncSession):
     }
     
     # Create the item
-    created_assistant = await create_item(test_db, Assistant, assistant_data)
+    created_assistant = await create_item(db_session, Assistant, assistant_data)
     
     # Update the item
     update_data = {
         "description": "Updated description"
     }
-    updated_assistant = await update_item(test_db, Assistant, created_assistant.id, update_data)
+    updated_assistant = await update_item(db_session, Assistant, created_assistant.id, update_data)
     
     # Verify the item was updated correctly
     assert updated_assistant is not None
@@ -71,12 +71,12 @@ async def test_update_item(test_db: AsyncSession):
     assert updated_assistant.description == "Updated description"  # Should be updated
     
     # Get the item to verify it was updated in the database
-    retrieved_assistant = await get_item(test_db, Assistant, created_assistant.id)
+    retrieved_assistant = await get_item(db_session, Assistant, created_assistant.id)
     assert retrieved_assistant.description == "Updated description"
 
 
 @pytest.mark.asyncio
-async def test_delete_item(test_db: AsyncSession):
+async def test_delete_item(db_session: AsyncSession):
     """
     Test deleting an item.
     """
@@ -87,34 +87,34 @@ async def test_delete_item(test_db: AsyncSession):
     }
     
     # Create the item
-    created_assistant = await create_item(test_db, Assistant, assistant_data)
+    created_assistant = await create_item(db_session, Assistant, assistant_data)
     
     # Delete the item
-    deleted_assistant = await delete_item(test_db, Assistant, created_assistant.id)
+    deleted_assistant = await delete_item(db_session, Assistant, created_assistant.id)
     
     # Verify the item was returned by delete_item
     assert deleted_assistant is not None
     assert deleted_assistant.id == created_assistant.id
     
     # Verify the item is no longer in the database
-    retrieved_assistant = await get_item(test_db, Assistant, created_assistant.id)
+    retrieved_assistant = await get_item(db_session, Assistant, created_assistant.id)
     assert retrieved_assistant is None
 
 
 @pytest.mark.asyncio
-async def test_get_all_items(test_db: AsyncSession):
+async def test_get_all_items(db_session: AsyncSession):
     """
     Test retrieving all items.
     """
     # Create some test assistants
     for i in range(3):
-        await create_item(test_db, Assistant, {
+        await create_item(db_session, Assistant, {
             "name": f"List Test Assistant {i}",
             "description": f"For testing get_all_items {i}"
         })
     
     # Get all assistants
-    assistants = await get_all_items(test_db, Assistant)
+    assistants = await get_all_items(db_session, Assistant)
     
     # Verify we got at least 3 assistants
     assert len(assistants) >= 3
@@ -128,18 +128,18 @@ async def test_get_all_items(test_db: AsyncSession):
 
 
 @pytest.mark.asyncio
-async def test_get_items_pagination(test_db: AsyncSession):
+async def test_get_items_pagination(db_session: AsyncSession):
     """
     Test retrieving items with pagination.
     """
     # Clear any existing assistants to have a clean test
-    existing_assistants = await get_all_items(test_db, Assistant)
+    existing_assistants = await get_all_items(db_session, Assistant)
     for assistant in existing_assistants:
-        await delete_item(test_db, Assistant, assistant.id)
+        await delete_item(db_session, Assistant, assistant.id)
     
     # Create a set of test assistants
     for i in range(5):
-        await create_item(test_db, Assistant, {
+        await create_item(db_session, Assistant, {
             "name": f"Pagination Test Assistant {i}",
             "description": f"For testing pagination {i}"
         })
@@ -154,7 +154,7 @@ async def test_get_items_pagination(test_db: AsyncSession):
     }
     
     # Get paginated items
-    result = await get_items(test_db, Assistant, mock_request, query_params)
+    result = await get_items(db_session, Assistant, mock_request, query_params)
     
     # Verify pagination properties
     assert result.page == 1
@@ -165,7 +165,7 @@ async def test_get_items_pagination(test_db: AsyncSession):
     
     # Test second page
     query_params["page"] = 2
-    result = await get_items(test_db, Assistant, mock_request, query_params)
+    result = await get_items(db_session, Assistant, mock_request, query_params)
     
     # Verify pagination properties for second page
     assert result.page == 2

@@ -1,4 +1,8 @@
 import os
+import redis.asyncio as aioredis
+import uvicorn
+import logging
+from contextlib import asynccontextmanager
 
 # only for local development
 if os.getenv("PYTHON_ENV") == "development":
@@ -7,7 +11,6 @@ if os.getenv("PYTHON_ENV") == "development":
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import uvicorn
 from loguru import logger
 
 
@@ -47,9 +50,10 @@ def create_application() -> FastAPI:
     # Include API router
     app.include_router(api_router, prefix=config.API_V1_STR)
 
-    # Add startup and shutdown events
-    @app.on_event("startup")
-    async def startup_event():
+    # Define lifespan context manager instead of using on_event
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        # Startup logic
         logger.info("Starting up application")
         try:
             # Connect to Redis
@@ -57,9 +61,11 @@ def create_application() -> FastAPI:
             logger.info("Connected to Redis")
         except Exception as e:
             logger.warning(f"Could not connect to Redis: {e}")
-
-    @app.on_event("shutdown")
-    async def shutdown_event():
+            
+        # Yield control to FastAPI
+        yield
+        
+        # Shutdown logic
         logger.info("Shutting down application")
         try:
             # Close Redis connection
@@ -67,6 +73,9 @@ def create_application() -> FastAPI:
             logger.info("Disconnected from Redis")
         except Exception as e:
             logger.warning(f"Error closing Redis connection: {e}")
+
+    # Assign lifespan to the app
+    app.router.lifespan_context = lifespan
 
     return app
 

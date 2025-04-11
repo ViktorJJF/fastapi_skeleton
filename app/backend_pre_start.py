@@ -1,4 +1,5 @@
 import logging
+import asyncio
 
 from sqlalchemy import Engine
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,7 +21,7 @@ wait_seconds = 1
     before=before_log(logger, logging.INFO),
     after=after_log(logger, logging.WARN),
 )
-def init(db_engine: Engine) -> None:
+async def init(db_engine: Engine) -> None:
     """
     Initialize the database connection.
     
@@ -33,15 +34,16 @@ def init(db_engine: Engine) -> None:
     Raises:
         Exception: If the database cannot be reached
     """
+    session = AsyncSession(db_engine)
     try:
-        # For SQLModel, we would use Session. For SQLAlchemy AsyncSession we need to adjust
-        with AsyncSession(db_engine) as session:
-            # Try to create session to check if DB is awake
-            session.execute(text("SELECT 1"))
-            session.commit()
+        # Try to create session to check if DB is awake
+        await session.execute(text("SELECT 1"))
+        await session.commit()
     except Exception as e:
-        logger.error(e)
+        logger.error(f"Database error: {e}")
         raise e
+    finally:
+        await session.close()
 
 
 def main() -> None:
@@ -52,7 +54,7 @@ def main() -> None:
     connection is working properly.
     """
     logger.info("Initializing service")
-    init(engine)
+    asyncio.run(init(engine))
     logger.info("Service finished initializing")
 
 
