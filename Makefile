@@ -25,6 +25,9 @@ help:
 	@echo "  make db-branches     - Show current branch points"
 	@echo "  make db-verify       - Verify the migration setup"
 
+dev:
+	uvicorn app.main:app --host 0.0.0.0 --port 4000 --reload
+
 start:
 	docker-compose up -d
 

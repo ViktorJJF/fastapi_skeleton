@@ -44,6 +44,25 @@ class Config(BaseSettings):
     AZURE_MONITOR_ENABLED: bool = os.getenv("AZURE_MONITOR_ENABLED", "false").lower() == "true"
     AZURE_APPINSIGHTS_CONNECTION_STRING: Optional[str] = os.getenv("AZURE_APPINSIGHTS_CONNECTION_STRING")
     
+    # Email (Optional - if sending verification/reset emails)
+    SMTP_TLS: bool = True
+    SMTP_PORT: int | None = 587
+    SMTP_HOST: str | None = None
+    SMTP_USER: str | None = None
+    SMTP_PASSWORD: str | None = None
+    EMAILS_FROM_EMAIL: str | None = None
+    EMAILS_FROM_NAME: str | None = None
+
+    # Rate Limiting (Example - Requires slowapi)
+    # RATE_LIMIT_USER: str = "50/minute"
+    # RATE_LIMIT_GUEST: str = "20/minute"
+
+    # Misc
+    PASSWORD_RESET_TOKEN_EXPIRE_HOURS: int = 2
+    EMAIL_VERIFICATION_TOKEN_EXPIRE_HOURS: int = 48
+    LOGIN_ATTEMPTS_LIMIT: int = 5
+    BLOCK_HOURS: int = 2
+
     class Config:
         case_sensitive = True
 

@@ -4,74 +4,133 @@ A scalable FastAPI project with MVC patterns, PostgreSQL, Redis, and logging.
 
 ## Run this project
 
-```
-uvicorn app.main:app --host 0.0.0.0 --port 4000 --reload 
+```bash
+# Ensure Docker and Docker Compose are running
+docker-compose up -d --build 
+# Run migrations
+make db-migrate 
+
+# Start the server
+make dev
+
+uvicorn app.main:app --host 0.0.0.0 --port 4000 --reload
 ```
 
 ## Features
 
 - FastAPI with async support
 - PostgreSQL database with SQLAlchemy ORM
-- Redis for caching
-- JWT authentication
-- Alembic for database migrations
-- Loguru for logging
+- Redis for caching (optional, needs setup)
+- **JWT Authentication** with role-based access control (`USER`, `ADMIN`, `SUPERADMIN`)
+- **User Management** (CRUD, Registration, Login, Password Reset)
+- Alembic for database migrations (with Makefile shortcuts)
+- Loguru for structured logging
 - Docker and Docker Compose for containerization
-- MVC architecture (Models, Views/Controllers, Services)
-- Generic base controller for CRUD operations
+- MVC-like architecture
+- Generic database helper functions for CRUD operations
 - Pagination and filtering utilities
 
 ## Project Structure
 
 ```
-app/
-├── controllers/        # Controllers for handling business logic
-│   ├── base_controller.py  # Generic base controller
-│   └── ...             # Specific controllers
-├── core/               # Core functionality (config, security, etc.)
-├── db/                 # Database related code
-│   └── migrations/     # Alembic migrations
-├── middlewares/        # Custom middlewares
-├── models/             # SQLAlchemy models
-├── repositories/       # Data access layer
-├── routes/             # API routes
-│   └── v1/             # API version 1 routes
-├── schemas/            # Pydantic schemas
-├── services/           # Business logic
-├── tests/              # Tests
-└── utils/              # Utility functions
-    ├── db_helpers.py   # Database helper functions
-    ├── error_handling.py  # Error handling utilities
-    └── pagination.py   # Pagination utilities
+.
+├── alembic.ini           # Alembic configuration
+├── docker-compose.yml    # Docker Compose configuration
+├── Dockerfile            # Dockerfile for the application
+├── Makefile              # Makefile for common commands
+├── migrations/           # Database migrations
+│   ├── versions/         # Migration script files
+│   ├── env.py            # Alembic environment setup
+│   └── script.py.mako    # Alembic migration template
+├── poetry.lock           # Poetry lock file
+├── pyproject.toml        # Python project configuration (Poetry)
+├── README.md             # This file
+└── app/
+    ├── __init__.py
+    ├── backend_pre_start.py # Script to run before app starts (e.g., wait for DB)
+    ├── main.py             # FastAPI application entrypoint
+    ├── core/               # Core settings and utilities
+    │   └── config.py       # Application configuration (Pydantic settings)
+    ├── controllers/        # Request handlers and business logic
+    │   ├── assistant_controller.py
+    │   ├── auth_controller.py
+    │   └── user_controller.py
+    ├── database/           # Database connection and session management
+    │   ├── connection.py
+    │   └── redis.py 
+    ├── db/                 # Base class for models (consider merging with database/)
+    │   └── base_class.py   
+    ├── dependencies/       # FastAPI dependencies
+    │   └── security.py     # Authentication and authorization dependencies
+    ├── middlewares/        # Custom FastAPI middlewares
+    │   └── logging_middleware.py
+    ├── models/             # SQLAlchemy ORM models
+    │   ├── __init__.py
+    │   ├── assistant.py
+    │   ├── auth.py
+    │   └── user.py
+    ├── routes/             # API endpoint definitions
+    │   └── v1/             # API version 1
+    │       ├── __init__.py
+    │       ├── api.py      # Main v1 router aggregation
+    │       ├── assistants.py
+    │       ├── auth.py
+    │       ├── messages.py # (Example, assuming it exists)
+    │       ├── threads.py  # (Example, assuming it exists)
+    │       └── users.py
+    ├── schemas/            # Pydantic schemas (data validation & serialization)
+    │   ├── __init__.py
+    │   ├── assistant.py
+    │   ├── auth.py
+    │   ├── core/           # Core schema components
+    │   │   ├── paginations.py
+    │   │   └── responses.py
+    │   └── user.py
+    ├── tests/              # Unit and integration tests (placeholder)
+    └── utils/              # Utility functions
+        ├── db_helpers.py   # Database helper functions
+        ├── error_handling.py # Error handling utilities
+        ├── pagination.py   # Pagination utilities
+        └── security.py     # Security utilities (JWT, passwords)
+
 ```
 
 ## Getting Started
 
 ### Prerequisites
 
-- Docker and Docker Compose
+- Python 3.11+
+- Poetry
+- Docker and Docker Compose (Recommended)
+- PostgreSQL Database
+- Redis (Optional)
 
-### Running the Application
+### Running the Application (Docker - Recommended)
 
-1. Clone the repository
-2. Run the application with Docker Compose:
+1.  Clone the repository
+2.  Ensure Docker Desktop or Docker Engine with Compose plugin is running.
+3.  Copy `.env.example` to `.env` and configure necessary variables (like `SECRET_KEY`, database connection if not using default Docker Compose setup).
+4.  Run the application:
+    ```bash
+    docker-compose up -d --build
+    ```
+5.  Access the API documentation at http://localhost:4000/docs
 
-```bash
-docker-compose up -d
-```
+### Running the Application (Locally)
 
-3. Access the API documentation at http://localhost:4000/docs
+1.  Clone the repository.
+2.  Install dependencies: `poetry install`
+3.  Set up a PostgreSQL database and optionally Redis.
+4.  Create a `.env` file from `.env.example` and update `DATABASE_URL`, `REDIS_URL` (if needed), `SECRET_KEY`, etc.
+5.  Ensure the database specified in `DATABASE_URL` exists. You might need to create it manually (e.g., `createdb your_db_name`).
+6.  Apply database migrations: `make db-migrate` (or `poetry run alembic upgrade head`)
+7.  Start the server: `make run` (or `poetry run uvicorn app.main:app --host 0.0.0.0 --port 4000 --reload`)
 
 ### Database Migrations
 
-This project uses Alembic for database migrations, following best practices from the official documentation:
+This project uses Alembic for database migrations. Common commands are available via Makefile shortcuts (recommended) or directly using `poetry run alembic`.
 
-- [Alembic Tutorial](https://alembic.sqlalchemy.org/en/latest/tutorial.html)
-- [Auto-generating Migrations](https://alembic.sqlalchemy.org/en/latest/autogenerate.html)
-- [Naming Conventions](https://alembic.sqlalchemy.org/en/latest/naming.html)
-- [Cookbook Recipes](https://alembic.sqlalchemy.org/en/latest/cookbook.html)
-
-Our migration system provides a Rails-like experience with a comprehensive set of commands:
+**Using Makefile:**
 
 ```bash
 # Creating Migrations
@@ -139,106 +198,50 @@ For more information, see `migrations/README.md` for detailed guidelines.
 
 ## API Endpoints
 
-All API endpoints are prefixed with `/api`. For example:
+All API endpoints are prefixed with `/api/v1`. Key endpoints include:
 
-- `/api/health` - Health check endpoint
-- `/api/v1/assistants` - Cities endpoints
+- `/api/v1/health` - Health check
+- `/api/v1/auth/register` - User registration (POST)
+- `/api/v1/auth/login` - User login (POST, returns JWT)
+- `/api/v1/auth/verify` - Email verification (POST)
+- `/api/v1/auth/forgot-password` - Request password reset (POST)
+- `/api/v1/auth/reset-password` - Reset password with token (POST)
+- `/api/v1/users/` - User management (GET list, POST create) - Requires Admin/Superadmin
+- `/api/v1/users/me` - Get current user's info (GET) - Requires logged-in user
+- `/api/v1/users/{user_id}` - User details, update, delete (GET, PUT, DELETE) - Requires Admin/Superadmin
+- `/api/v1/assistants/` - Assistant management (GET list, POST create) - Requires Admin/Superadmin
+- `/api/v1/assistants/{assistant_id}` - Assistant details, update, delete (GET, PUT, DELETE) - Requires Admin/Superadmin
+
+*(Note: Access control based on current implementation, subject to change)*
 
 ## Architecture
 
-The project follows a clean architecture pattern with separation of concerns:
+The project follows a layered architecture inspired by MVC, aiming for separation of concerns:
 
-- **Routes**: Handle HTTP requests and responses in the `app/routes` directory
-- **Controllers**: Contain business logic in the `app/controllers` directory
-- **Models**: SQLAlchemy models in the `app/models` directory
-- **Schemas**: Pydantic schemas for validation in the `app/schemas` directory
-- **Services**: Business logic in the `app/services` directory
-- **Repositories**: Data access in the `app/repositories` directory
-
-### Base Controller
-
-The `BaseController` class provides generic CRUD operations for any model:
-
-```python
-class CityController(BaseController):
-    def __init__(self):
-        super().__init__(
-            model=City,
-            create_schema=CityCreate,
-            update_schema=CityUpdate,
-            get_schema=CitySchema,
-            prefix="/cities",
-            tags=["cities"],
-            unique_fields=["name"]
-        )
-```
-
-### Nested Routes Example
-
-The project supports nested routes, such as entities under assistants:
-
-```python
-@router.get("/{assistant_id}/entities", response_model=dict)
-async def entities_list(
-    assistant_id: str,
-    request: Request,
-    db: AsyncSession = Depends(get_db)
-):
-    """
-    List all entities for a specific assistant.
-    """
-    return await entities_controller.lists(request, assistant_id, db)
-```
+- **Routes (`app/routes/v1/`)**: Define API endpoints, handle request/response validation (using schemas), call controllers, and manage dependencies (like authentication).
+- **Controllers (`app/controllers/`)**: Orchestrate the business logic for specific features. They interact with database helpers/services and format responses.
+- **Models (`app/models/`)**: Define the database structure using SQLAlchemy ORM.
+- **Schemas (`app/schemas/`)**: Define data shapes for request validation and response serialization using Pydantic.
+- **Dependencies (`app/dependencies/`)**: Provide reusable logic for routes, particularly for security (authentication, authorization).
+- **Utilities (`app/utils/`)**: Contain helper functions for common tasks like database operations (`db_helpers.py`), security (`security.py`), pagination, and error handling.
+- **Core (`app/core/`)**: Holds application-wide configuration.
+- **Database (`app/database/`)**: Manages database connections and sessions.
 
 ### Database Helpers
 
-The `db_helpers.py` file provides utilities for database operations:
+The `app/utils/db_helpers.py` file provides generic utilities for common database operations like fetching, creating, updating, and deleting single or multiple items, along with pagination and filtering logic. Controllers utilize these helpers to interact with the database.
 
-- `get_all_items`: Get all items from a model
-- `get_items`: Get paginated items with filtering
-- `get_item`: Get a single item by ID
-- `create_item`: Create a new item
-- `update_item`: Update an existing item
-- `delete_item`: Delete an item
+### Authentication Flow
 
-### Pagination
-
-The `pagination.py` file provides utilities for pagination:
-
-```python
-# Example usage in a controller
-@router.get("/", response_model=PaginatedResponse[MySchema])
-async def get_items(
-    page: int = Depends(pagination_params),
-    size: int = Depends(pagination_params),
-    db: AsyncSession = Depends(get_db)
-):
-    items = await get_items(db, MyModel, page, size)
-    return paginate(items, total, page, size)
-```
-
-## License
-
-This project is licensed under the MIT License.
-
-## Database Setup
-
-### Initial Setup
-
-To set up the database for the first time:
-
-```bash
-# One-step setup (creates database and runs migrations)
-make db-setup
-
-# Reset tables and re-run migrations (useful for table name changes)
-make db-setup-reset
-
-# Or step by step:
-make db-create-database  # Creates the albedo_db database
-make db-reset-tables     # Optional: Drop existing tables and reset migration state
-make db-migrate          # Runs all pending migrations
-```
+1.  User registers via `/auth/register`.
+2.  User logs in via `/auth/login` (providing email/password).
+3.  Server verifies credentials, checks for blocks/verification status.
+4.  If successful, server generates a JWT access token containing user ID, role, email, and expiration.
+5.  Server returns the access token to the client.
+6.  Client sends the access token in the `Authorization: Bearer <token>` header for subsequent requests to protected endpoints.
+7.  FastAPI, using security dependencies (`app/dependencies/security.py`), decodes and validates the token on incoming requests.
+8.  Dependencies check if the user has the required role (scopes) for the specific endpoint.
+9.  If the token is valid and the user has permissions, the request proceeds to the controller logic.
 
 ### Table Naming Convention
 

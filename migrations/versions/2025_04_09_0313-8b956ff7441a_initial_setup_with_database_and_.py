@@ -56,6 +56,7 @@ def downgrade() -> None:
     # Drop the triggers and functions if PostgreSQL
     conn = op.get_bind()
     if conn.dialect.name == 'postgresql':
+        pass
 
 
 # Additional functions for complex migration logic

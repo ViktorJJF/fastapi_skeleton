@@ -1,6 +1,12 @@
 import asyncio
 import os
+import sys
 from logging.config import fileConfig
+
+# --- Add project root to sys.path --- 
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, PROJECT_ROOT)
+# --- End path setup --- 
 
 from sqlalchemy import engine_from_config, pool
 from sqlalchemy.engine import Connection
@@ -10,27 +16,27 @@ from alembic import context
 
 # Import SQLAlchemy models so they are known to Alembic
 from app.database.connection import Base
-from app.core.config import config
+from app.core.config import config as app_settings
 
 # Import all models to ensure they're discovered by SQLAlchemy
-from app.models import base, user, assistant, entity
+from app.models import base, user, assistant
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
-config = context.config
+alembic_config = context.config
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
-if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+if alembic_config.config_file_name is not None:
+    fileConfig(alembic_config.config_file_name)
 
 # Set the database URL in the Alembic configuration dynamically
 # This ensures we're always using the correct connection string
 # For migrations, use synchronous driver
-db_url = config.DATABASE_URL
+db_url = app_settings.DATABASE_URL
 if db_url.startswith("postgresql+asyncpg://"):
     db_url = db_url.replace("postgresql+asyncpg://", "postgresql://", 1)
-config.set_main_option("sqlalchemy.url", db_url)
+alembic_config.set_main_option("sqlalchemy.url", db_url)
 
 # Add your model's MetaData object here for 'autogenerate' support
 target_metadata = Base.metadata
@@ -74,7 +80,7 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = config.get_main_option("sqlalchemy.url")
+    url = alembic_config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -116,7 +122,7 @@ def run_migrations_online() -> None:
     """
     # Create synchronous engine with retry logic
     connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
+        alembic_config.get_section(alembic_config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )

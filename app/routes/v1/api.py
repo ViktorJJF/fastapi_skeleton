@@ -3,7 +3,12 @@ API router for v1 endpoints.
 """
 from fastapi import APIRouter
 
-from app.routes.v1 import assistants
+# Correct imports from app/routes/v1
+from app.routes.v1 import (
+    assistants,
+    users,
+    auth,
+)
 
 # Create API router
 api_router = APIRouter()
@@ -16,6 +21,11 @@ async def health_check():
     """
     return {"status": "ok"}
 
-api_router.include_router(
-    assistants.router, prefix="/assistants", tags=["assistants"]
-)
+# Include authentication routes
+api_router.include_router(auth.router, prefix="/auth", tags=["Auth"])
+
+# Include user routes
+api_router.include_router(users.router, prefix="/users", tags=["Users"])
+
+# Include other existing routers using the correct variables
+api_router.include_router(assistants.router, prefix="/assistants", tags=["Assistants"])

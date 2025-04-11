@@ -343,7 +343,7 @@ async def update_item(db: AsyncSession, model: Type[ModelType], id: int, data: U
         if not updated_item:
             return None
             
-        return updated_item
+        return updated_item.to_dict()
     except Exception as e:
         await db.rollback()
         raise HTTPException(status_code=422, detail=f"Error updating item: {str(e)}")
