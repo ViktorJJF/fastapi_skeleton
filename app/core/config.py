@@ -29,7 +29,7 @@ class Config(BaseSettings):
     # Telegram notification config
     TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
     TELEGRAM_CHAT_ID: str = os.getenv("TELEGRAM_CHAT_ID", "")
-    TELEGRAM_NOTIFICATIONS_ENABLED: bool = os.getenv("TELEGRAM_NOTIFICATIONS_ENABLED", "false").lower() == "true"
+    TELEGRAM_NOTIFICATIONS_ENABLED: bool = os.getenv("TELEGRAM_NOTIFICATIONS_ENABLED", "true").lower() == "true"
     
     # Logging config
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
@@ -46,6 +46,5 @@ class Config(BaseSettings):
     
     class Config:
         case_sensitive = True
-
 
 config = Config() 

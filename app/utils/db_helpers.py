@@ -169,8 +169,6 @@ async def create_item(db: AsyncSession, model: Type[ModelType], data: Dict[str, 
     """
     try:
         db_item = model(**data)
-        # throw error to test
-        raise Exception("Test error")
         db.add(db_item)
         await db.commit()
         await db.refresh(db_item)
