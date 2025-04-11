@@ -14,5 +14,11 @@ pytest>=7.4.3
 pytest-asyncio>=0.21.1
 loguru>=0.7.2
 tenacity>=8.2.3
-colorama>=0.4.6
+colorama>=0.4.7
 inflect>=7.0.0
+python-telegram-bot>=22.0
+
+# Optional dependencies for external logging
+# google-cloud-logging>=3.6.0  # Uncomment to enable Google Cloud Logging
+# opencensus-ext-azure>=1.1.9  # Uncomment to enable Azure Monitor logging
+# opencensus>=0.11.0  # Required by opencensus-ext-azure

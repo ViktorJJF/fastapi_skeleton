@@ -5,14 +5,18 @@ from loguru import logger
 
 from app.routes.v1.api import api_router
 from app.core.config import settings
-from app.db.redis import redis_client
+from app.database.redis import redis_client
 from app.middlewares.logging_middleware import logging_middleware
+from app.utils.error_handling import setup_global_exception_handler
 
 
 def create_application() -> FastAPI:
     """
     Create FastAPI application.
     """
+    # Set up global exception handler for uncaught exceptions
+    setup_global_exception_handler()
+    
     # Create FastAPI app
     app = FastAPI(
         title=settings.PROJECT_NAME,
