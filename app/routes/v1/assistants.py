@@ -7,7 +7,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.controllers import assistant_controller
 from app.database.connection import get_db
 from app.schemas.assistant import AssistantCreate, AssistantUpdate
-from app.utils.error_handling import handle_error
 
 router = APIRouter()
 
@@ -20,10 +19,7 @@ async def list_assistants(
     """
     List all assistants.
     """
-    try:
-        return await assistant_controller.list_all(request, db)
-    except Exception as error:
-        return handle_error(response, error)
+    return await assistant_controller.list_all(request, db)
 
 @router.get("/paginated", response_model=dict)
 async def list_assistants_paginated(
@@ -34,64 +30,53 @@ async def list_assistants_paginated(
     """
     List assistants with pagination.
     """
-    try:
-        return await assistant_controller.list_paginated(request, db)
-    except Exception as error:
-        return handle_error(response, error)
+    return await assistant_controller.list_paginated(request, db)
 
 @router.get("/{id}", response_model=dict)
 async def get_assistant(
-    id: str,
+    request: Request,
     response: Response,
+    id: int,
     db: AsyncSession = Depends(get_db)
 ):
     """
     Get an assistant by ID.
     """
-    try:
-        return await assistant_controller.get_one(id, db)
-    except Exception as error:
-        return handle_error(response, error)
+    return await assistant_controller.get_one(id, db)
 
 @router.post("/", response_model=dict, status_code=status.HTTP_201_CREATED)
 async def create_assistant(
-    assistant_in: AssistantCreate,
+    request: Request,
     response: Response,
+    assistant: AssistantCreate,
     db: AsyncSession = Depends(get_db)
 ):
     """
     Create a new assistant.
     """
-    try:
-        return await assistant_controller.create(assistant_in, db)
-    except Exception as error:
-        return handle_error(response, error)
+    return await assistant_controller.create(assistant, db)
 
 @router.put("/{id}", response_model=dict)
 async def update_assistant(
-    id: str,
-    assistant_in: AssistantUpdate,
+    request: Request,
     response: Response,
+    id: int,
+    assistant: AssistantUpdate,
     db: AsyncSession = Depends(get_db)
 ):
     """
     Update an assistant.
     """
-    try:
-        return await assistant_controller.update(id, assistant_in, db)
-    except Exception as error:
-        return handle_error(response, error)
+    return await assistant_controller.update(id, assistant, db)
 
 @router.delete("/{id}", response_model=dict)
 async def delete_assistant(
-    id: str,
+    request: Request,
     response: Response,
+    id: int,
     db: AsyncSession = Depends(get_db)
 ):
     """
     Delete an assistant.
     """
-    try:
-        return await assistant_controller.delete(id, db)
-    except Exception as error:
-        return handle_error(response, error) 
+    return await assistant_controller.delete(id, db) 

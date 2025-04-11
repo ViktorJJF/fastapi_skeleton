@@ -9,7 +9,7 @@ import socket
 from loguru import logger
 import atexit
 
-from app.core.config import settings
+from app.core.config import config
 
 
 class InterceptHandler(logging.Handler):
@@ -81,7 +81,7 @@ class GoogleCloudLoggingSink:
                 "line": record["line"],
                 "file": record["file"].name,
                 "environment": os.getenv("PYTHON_ENV", "development"),
-                "service": settings.PROJECT_NAME,
+                "service": config.PROJECT_NAME,
                 "host": socket.gethostname()
             }
             
@@ -108,7 +108,7 @@ class AzureMonitorSink:
         Args:
             connection_string: Azure Application Insights connection string
         """
-        self.connection_string = connection_string or settings.AZURE_APPINSIGHTS_CONNECTION_STRING
+        self.connection_string = connection_string or config.AZURE_APPINSIGHTS_CONNECTION_STRING
         try:
             from opencensus.ext.azure.log_exporter import AzureLogHandler
             self.handler = AzureLogHandler(connection_string=self.connection_string)
@@ -143,7 +143,7 @@ class AzureMonitorSink:
             # Add custom properties
             log_record.custom_dimensions = {
                 "environment": os.getenv("PYTHON_ENV", "development"),
-                "service": settings.PROJECT_NAME,
+                "service": config.PROJECT_NAME,
                 "host": socket.gethostname(),
                 "function": record["function"]
             }
@@ -169,7 +169,7 @@ def setup_logging():
         logging.getLogger(name).propagate = True
 
     # Configure loguru
-    log_level = "DEBUG" if settings.DEBUG else "INFO"
+    log_level = "DEBUG" if config.DEBUG else "INFO"
     
     # Create logs directory if it doesn't exist
     logs_dir = Path("logs")
@@ -226,7 +226,7 @@ def setup_logging():
                 "process_id": record["process"].id,
                 "exception": str(record["exception"]) if record["exception"] else None,
                 "environment": os.getenv("PYTHON_ENV", "development"),
-                "service": settings.PROJECT_NAME,
+                "service": config.PROJECT_NAME,
                 "host": socket.gethostname()
             }) + "\n",
             "level": log_level,
@@ -235,11 +235,11 @@ def setup_logging():
     ]
     
     # Add Google Cloud Logging if configured
-    if getattr(settings, "GOOGLE_CLOUD_LOGGING_ENABLED", False):
+    if getattr(config, "GOOGLE_CLOUD_LOGGING_ENABLED", False):
         handlers.append({
             "sink": GoogleCloudLoggingSink(
-                log_name=getattr(settings, "GOOGLE_CLOUD_LOG_NAME", "albedo_api"),
-                project_id=getattr(settings, "GOOGLE_CLOUD_PROJECT_ID", None)
+                log_name=getattr(config, "GOOGLE_CLOUD_LOG_NAME", "albedo_api"),
+                project_id=getattr(config, "GOOGLE_CLOUD_PROJECT_ID", None)
             ),
             "level": "INFO",
             "format": "{message}",  # The sink handles formatting
@@ -247,10 +247,10 @@ def setup_logging():
         })
     
     # Add Azure Monitor if configured
-    if getattr(settings, "AZURE_MONITOR_ENABLED", False):
+    if getattr(config, "AZURE_MONITOR_ENABLED", False):
         handlers.append({
             "sink": AzureMonitorSink(
-                connection_string=getattr(settings, "AZURE_APPINSIGHTS_CONNECTION_STRING", None)
+                connection_string=getattr(config, "AZURE_APPINSIGHTS_CONNECTION_STRING", None)
             ),
             "level": "INFO",
             "format": "{message}",  # The sink handles formatting
@@ -263,7 +263,7 @@ def setup_logging():
     # Log startup information
     logger.info(f"Logging initialized: level={log_level}, logs_dir={logs_dir.absolute()}")
     logger.info(f"Environment: {os.getenv('PYTHON_ENV', 'development')}")
-    logger.info(f"Service: {settings.PROJECT_NAME}")
+    logger.info(f"Service: {config.PROJECT_NAME}")
     
     # Register atexit handler to flush logs
     def _flush_logs():

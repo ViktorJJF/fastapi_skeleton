@@ -2,10 +2,10 @@ import os
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from app.core.config import settings
+from app.core.config import config
 
-# Get PostgreSQL connection string from settings
-DATABASE_URL = settings.DATABASE_URL
+# Get PostgreSQL connection string from config
+DATABASE_URL = config.DATABASE_URL
 
 # Convert the PostgreSQL URL to an async URL
 if DATABASE_URL.startswith("postgresql://"):

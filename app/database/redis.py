@@ -2,7 +2,7 @@ import redis.asyncio as redis
 import logging
 from tenacity import retry, stop_after_attempt, wait_fixed
 
-from app.core.config import settings
+from app.core.config import config
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +12,7 @@ class RedisClient:
     Redis client for caching and other operations.
     """
     def __init__(self):
-        self.redis_url = settings.REDIS_URL
+        self.redis_url = config.REDIS_URL
         self.client = None
 
     @retry(stop=stop_after_attempt(5), wait=wait_fixed(1))

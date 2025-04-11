@@ -6,11 +6,9 @@ import sys
 import logging
 import traceback
 import asyncio
+from loguru import logger
 
-from app.services.telegram_service import telegram_service
-
-
-logger = logging.getLogger(__name__)
+from app.core.notifications import telegram_notifier
 
 
 def build_error_object(code: int, message: Union[str, Dict]) -> HTTPException:
@@ -49,37 +47,45 @@ def item_already_exists(error: Optional[Exception], item: Any, message: str = "I
         raise build_error_object(status.HTTP_409_CONFLICT, message)
 
 
-async def handle_error(response: JSONResponse, error: Any) -> JSONResponse:
+def handle_error(response_or_error: Any, error: Any = None) -> JSONResponse:
     """
     Handle error and return appropriate response.
     Logs error in development environments and builds and sends an error response.
     
     Args:
-        response: JSONResponse class to create the response
-        error: Error object to be handled
+        response_or_error: Either a Response object (for backward compatibility) or the error itself
+        error: Error object to be handled (optional, for backward compatibility)
     
     Returns:
         JSONResponse: A formatted JSON response with error details
     """
+    # Handle both new and old calling conventions
+    if error is None:
+        # New style: handle_error(error)
+        actual_error = response_or_error
+    else:
+        # Old style: handle_error(response, error)
+        actual_error = error
+    
     # Log the error message and the full traceback for detailed debugging
-    error_message = f"Error: {str(error)}"
+    error_message = f"Error: {str(actual_error)}"
     traceback_info = traceback.format_exc()
     
-    logger.error(f"{error_message}\nTraceback:\n{traceback_info}")
+    # Use loguru instead of standard logging
+    logger.opt(exception=True).error(f"{error_message}")
     
-    # Send notification to Telegram
-    asyncio.create_task(
-        telegram_service.send_error_notification(str(error), traceback_info)
-    )
+    # Send notification to Telegram asynchronously in background
+    # This won't block response generation
+    telegram_notifier.send_error_notification(str(actual_error), traceback_info)
     
     # Format the error response
-    if isinstance(error, HTTPException):
+    if isinstance(actual_error, HTTPException):
         return JSONResponse(
-            status_code=error.status_code,
+            status_code=actual_error.status_code,
             content={
                 "ok": False, 
                 "errors": {
-                    "msg": error.detail
+                    "msg": actual_error.detail
                 }
             }
         )
@@ -90,7 +96,7 @@ async def handle_error(response: JSONResponse, error: Any) -> JSONResponse:
         content={
             "ok": False, 
             "errors": {
-                "msg": str(error)
+                "msg": str(actual_error)
             }
         }
     )
@@ -123,19 +129,11 @@ def setup_global_exception_handler():
         error_message = f"Uncaught exception: {exc_type.__name__}: {exc_value}"
         traceback_text = "".join(traceback.format_exception(exc_type, exc_value, exc_traceback))
         
-        # Log the exception
-        logger.critical(f"{error_message}\n{traceback_text}")
+        # Log the exception using loguru
+        logger.opt(exception=True).critical(error_message)
         
-        # Send Telegram notification (need to create a new event loop for async)
-        try:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            loop.run_until_complete(
-                telegram_service.send_error_notification(str(exc_value), traceback_text)
-            )
-            loop.close()
-        except Exception as e:
-            logger.error(f"Failed to send Telegram notification: {e}")
+        # Send Telegram notification without blocking
+        telegram_notifier.send_error_notification(str(exc_value), traceback_text)
 
     # Set the exception hook
     sys.excepthook = handle_exception 

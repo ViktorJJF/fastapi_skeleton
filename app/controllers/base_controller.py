@@ -98,7 +98,7 @@ class BaseController(Generic[ModelType, CreateSchemaType, UpdateSchemaType, GetS
         """
         Handle error and return appropriate response.
         """
-        return handle_error(response, error)
+        return handle_error(error)
     
     def setup_routes(self):
         """

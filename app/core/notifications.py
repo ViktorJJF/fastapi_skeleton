@@ -5,7 +5,7 @@ from loguru import logger
 
 # Removed direct import to avoid circular dependency
 # Will import telegram_service at function call time
-from app.core.config import settings
+from app.core.config import config
 
 
 class TelegramNotifier:
@@ -14,7 +14,7 @@ class TelegramNotifier:
     Uses the telegram_service for actual message delivery.
     """
     def __init__(self):
-        self.enabled = settings.TELEGRAM_NOTIFICATIONS_ENABLED
+        self.enabled = config.TELEGRAM_NOTIFICATIONS_ENABLED
         
         # Log initialization
         if self.enabled:

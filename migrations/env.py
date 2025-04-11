@@ -10,7 +10,7 @@ from alembic import context
 
 # Import SQLAlchemy models so they are known to Alembic
 from app.database.connection import Base
-from app.core.config import settings
+from app.core.config import config
 
 # Import all models to ensure they're discovered by SQLAlchemy
 from app.models import base, user, assistant, entity
@@ -27,7 +27,7 @@ if config.config_file_name is not None:
 # Set the database URL in the Alembic configuration dynamically
 # This ensures we're always using the correct connection string
 # For migrations, use synchronous driver
-db_url = settings.DATABASE_URL
+db_url = config.DATABASE_URL
 if db_url.startswith("postgresql+asyncpg://"):
     db_url = db_url.replace("postgresql+asyncpg://", "postgresql://", 1)
 config.set_main_option("sqlalchemy.url", db_url)

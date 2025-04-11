@@ -5,7 +5,7 @@ from loguru import logger
 
 from telegram import Bot
 from telegram.error import TelegramError
-from app.core.config import settings
+from app.core.config import config
 
 
 class TelegramService:
@@ -14,9 +14,9 @@ class TelegramService:
     Basic message delivery service - error formatting handled by notifications.py.
     """
     def __init__(self):
-        self.token = settings.TELEGRAM_BOT_TOKEN
-        self.chat_id = settings.TELEGRAM_CHAT_ID
-        self.enabled = settings.TELEGRAM_NOTIFICATIONS_ENABLED
+        self.token = config.TELEGRAM_BOT_TOKEN
+        self.chat_id = config.TELEGRAM_CHAT_ID
+        self.enabled = config.TELEGRAM_NOTIFICATIONS_ENABLED
         self._bot = None
         
         # Log initialization

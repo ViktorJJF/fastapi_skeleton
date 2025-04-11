@@ -126,7 +126,7 @@ Logging configuration can be adjusted through environment variables:
 
 ## Telegram Notifications
 
-Critical errors can be sent as Telegram notifications. This is configured in `app/core/notifications.py` and uses the settings from `app/core/config.py`.
+Critical errors can be sent as Telegram notifications. This is configured in `app/core/notifications.py` and uses the config from `app/core/config.py`.
 
 To enable Telegram notifications:
 
