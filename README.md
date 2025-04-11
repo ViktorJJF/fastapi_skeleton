@@ -2,6 +2,12 @@
 
 A scalable FastAPI project with MVC patterns, PostgreSQL, Redis, and logging.
 
+## Run this project
+
+```
+uvicorn app.main:app --host 0.0.0.0 --port 4000 --reload 
+```
+
 ## Features
 
 - FastAPI with async support
