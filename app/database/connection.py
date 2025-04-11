@@ -2,10 +2,10 @@ import os
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from app.core.config import settings
 
-# Get PostgreSQL connection string from environment variable
-# Fallback to default connection string if not provided
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@postgres:5432/albedo_db")
+# Get PostgreSQL connection string from settings
+DATABASE_URL = settings.DATABASE_URL
 
 # Convert the PostgreSQL URL to an async URL
 if DATABASE_URL.startswith("postgresql://"):
