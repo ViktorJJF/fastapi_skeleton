@@ -16,13 +16,13 @@ from app.utils.db_helpers import (
 from app.utils.error_handling import handle_error, is_id_valid, build_error_object
 
 
-async def create(assistant_in: AssistantCreate, request: Request, db: AsyncSession) -> JSONResponse:
+async def create(item: AssistantCreate, request: Request, db: AsyncSession) -> JSONResponse:
     """
     Create a new assistant.
     """
     try:
         # Create item
-        item = await create_item(db, Assistant, assistant_in)
+        item = await create_item(db, Assistant, item)
         return JSONResponse(
             status_code=status.HTTP_201_CREATED,
             content={"ok": True, "payload": item.to_dict()}
@@ -31,21 +31,22 @@ async def create(assistant_in: AssistantCreate, request: Request, db: AsyncSessi
         return await handle_error(request, e)
 
 
-async def update(id: str, assistant_in: AssistantUpdate, request: Request, db: AsyncSession) -> JSONResponse:
+async def update(id: str, item: AssistantUpdate, request: Request, db: AsyncSession) -> JSONResponse:
     """
     Update an assistant.
     """
     try:
         # Validate ID
         valid_id = is_id_valid(id)
+        
         # Update item
-        item = await update_item(db, Assistant, valid_id, assistant_in)
-        if not item:
+        updated_assistant = await update_item(db, Assistant, valid_id, item)
+        if not updated_assistant:
             raise build_error_object(status.HTTP_404_NOT_FOUND, "Assistant not found")
         
         return JSONResponse(
             status_code=status.HTTP_200_OK,
-            content={"ok": True, "payload": item.to_dict()}
+            content={"ok": True, "payload": updated_assistant}  # Return the Pydantic model directly
         )
     except Exception as e:
         return await handle_error(request, e)

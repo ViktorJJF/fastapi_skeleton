@@ -2,7 +2,7 @@ from typing import Any, Dict, List, Optional, Type, TypeVar, Union, Generic
 from fastapi import Request, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, update
 from pydantic import BaseModel
 from sqlalchemy.orm import DeclarativeBase
 
@@ -192,24 +192,28 @@ async def create_item(db: AsyncSession, model: Type[ModelType], data: Dict[str, 
         raise HTTPException(status_code=422, detail=f"Error creating item: {str(e)}")
 
 
-async def update_item(db: AsyncSession, model: Type[ModelType], id: int, data: Dict[str, Any]) -> Optional[ModelType]:
+async def update_item(db: AsyncSession, model: Type[ModelType], id: int, data: Union[Dict[str, Any], BaseModel]) -> Optional[ModelType]:
     """
     Update an existing item.
     """
-    item = await get_item(db, model, id)
-    
-    if not item:
-        return None
-    
-    for field, value in data.items():
-        if hasattr(item, field):
-            setattr(item, field, value)
-    
     try:
-        db.add(item)
+        # Convert Pydantic models to dict if needed
+        if isinstance(data, BaseModel):
+            data_dict = data.dict(exclude_unset=True)
+        else:
+            data_dict = data
+            
+        stmt = update(model).where(model.id == id).values(**data_dict).returning(model)
+        result = await db.execute(stmt)
         await db.commit()
-        await db.refresh(item)
-        return item
+        
+        # Get the updated item
+        updated_item = result.scalars().first()
+        
+        if not updated_item:
+            return None
+            
+        return updated_item
     except Exception as e:
         await db.rollback()
         raise HTTPException(status_code=422, detail=f"Error updating item: {str(e)}")
