@@ -13,11 +13,16 @@ class PaginationParams(BaseModel):
 
 class PaginatedResponse(BaseModel):
     """Base model for paginated responses."""
-    items: List[Any] = Field(..., description="List of items on the current page")
-    total: int = Field(..., description="Total number of items across all pages")
+    payload: List[Any] = Field(..., description="List of items on the current page")
+    totalDocs: int = Field(..., description="Total number of items across all pages")
+    limit: int = Field(..., description="Number of items per page")
+    totalPages: int = Field(..., description="Total number of pages")
     page: int = Field(..., description="Current page number")
-    size: int = Field(..., description="Number of items per page")
-    pages: int = Field(..., description="Total number of pages")
+    pagingCounter: int = Field(..., description="The current page number")
+    hasPrevPage: bool = Field(..., description="Whether there is a previous page")
+    hasNextPage: bool = Field(..., description="Whether there is a next page")
+    prevPage: int | None = Field(None, description="Previous page number if it exists")
+    nextPage: int | None = Field(None, description="Next page number if it exists")
 
     model_config = {
         "arbitrary_types_allowed": True

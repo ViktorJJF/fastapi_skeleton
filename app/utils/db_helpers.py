@@ -184,7 +184,7 @@ async def get_items(
     model: Type[ModelType],
     request: Request,
     processed_query: Dict[str, Any]
-) -> PaginatedResponse:
+) -> Dict[str, Any]:
     """
     Get items with pagination, sorting, and filtering.
     
@@ -219,8 +219,21 @@ async def get_items(
     
     Returns:
     --------
-    PaginatedResponse
-        A paginated response containing the items and pagination metadata.
+    Dict[str, Any]
+        A response containing items and pagination metadata in the format:
+        {
+            "ok": true,
+            "totalDocs": total number of items,
+            "limit": items per page,
+            "totalPages": total number of pages,
+            "page": current page number,
+            "pagingCounter": current page number,
+            "hasPrevPage": boolean indicating if previous page exists,
+            "hasNextPage": boolean indicating if next page exists,
+            "prevPage": previous page number or null,
+            "nextPage": next page number or null,
+            "payload": list of items
+        }
     """
 
     # Extract pagination options after processing
@@ -278,8 +291,32 @@ async def get_items(
     result = await db.execute(query)
     items = result.scalars().all()
 
-    # Return paginated response
-    return paginate(items=items, total=total_count, page=page, size=limit)
+    # Convert items to dictionaries
+    items_dict = [item.to_dict() if hasattr(item, 'to_dict') else dict(item) if hasattr(item, 'keys') else vars(item) for item in items]
+
+    # Calculate total pages
+    total_pages = (total_count + limit - 1) // limit if limit > 0 else 0
+    
+    # Calculate previous and next pages
+    has_prev_page = page > 1
+    has_next_page = page < total_pages
+    prev_page = page - 1 if has_prev_page else None
+    next_page = page + 1 if has_next_page else None
+
+    # Return formatted response
+    return {
+        "ok": True,
+        "totalDocs": total_count,
+        "limit": limit,
+        "totalPages": total_pages,
+        "page": page,
+        "pagingCounter": page,
+        "hasPrevPage": has_prev_page,
+        "hasNextPage": has_next_page,
+        "prevPage": prev_page,
+        "nextPage": next_page,
+        "payload": items_dict
+    }
 
 
 async def get_item(db: AsyncSession, model: Type[ModelType], id: int) -> Optional[ModelType]:
