@@ -1,0 +1,39 @@
+[project]
+name = "fastapi-skeleton-v1.0.0"
+version = "1.0.0"
+description = "Fastapi Skeleton v1.0.0 for fun!"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "alembic>=1.16.5",
+    "asyncpg>=0.30.0",
+    "bcrypt>=4.3.0",
+    "colorama>=0.4.6",
+    "email-validator>=2.3.0",
+    "fastapi>=0.116.1",
+    "httpx>=0.28.1",
+    "inflect>=7.5.0",
+    "loguru>=0.7.3",
+    "passlib>=1.7.4",
+    "psycopg2-binary>=2.9.10",
+    "pydantic>=2.11.7",
+    "pydantic-settings>=2.10.1",
+    "pytest>=8.4.2",
+    "pytest-asyncio>=1.1.0",
+    "python-jose[cryptography]>=3.5.0",
+    "python-multipart>=0.0.20",
+    "python-telegram-bot>=22.3",
+    "redis>=6.4.0",
+    "sqlalchemy>=2.0.43",
+    "tenacity>=9.1.2",
+    "uvicorn>=0.35.0",
+]
+
+[dependency-groups]
+dev = [
+    "taskipy>=1.14.1",
+]
+
+[tool.taskipy.tasks]
+dev = "uvicorn app.main:app --host 0.0.0.0 --port 4000 --reload"
+migrate = "alembic upgrade head"

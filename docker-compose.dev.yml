@@ -11,6 +11,7 @@ services:
     env_file:
       - .env
     depends_on:
+      - postgres
       - redis
     restart: always
     command:
@@ -24,6 +25,19 @@ services:
         "--reload",
       ]
 
+  postgres:
+    container_name: AlbedoPostgres
+    image: postgres:16
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=albedo_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+
   redis:
     container_name: AlbedoRedis
     image: redis:7
@@ -34,4 +48,5 @@ services:
     restart: always
 
 volumes:
+  postgres_data:
   redis_data:
