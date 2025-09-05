@@ -54,3 +54,6 @@ fi
 
 # Start the application
 echo "${BLUE}Starting application...${NC}"
+
+# Execute the command passed to this script (e.g., uvicorn)
+exec "$@"
