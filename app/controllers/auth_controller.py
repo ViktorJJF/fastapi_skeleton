@@ -6,8 +6,8 @@ from datetime import datetime, timedelta
 import uuid
 
 from app.database.connection import get_db
-from app.models.user import User
-from app.models.auth import ForgotPassword, UserAccess
+from app.models.Users import User
+from app.models.Auth import ForgotPassword, UserAccess
 from app.schemas.auth import (
     LoginRequest,
     TokenResponse,
@@ -16,7 +16,7 @@ from app.schemas.auth import (
     VerifyEmailRequest,
     VerificationResponse,
 )
-from app.schemas.user import UserCreate, User as UserSchema, UserInToken
+from app.schemas.user import UserCreate, UserInToken
 from app.utils.security import verify_password, create_access_token, get_password_hash
 from app.utils.error_handling import handle_error, build_error_object
 from app.core.config import config

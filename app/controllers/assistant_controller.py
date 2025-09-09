@@ -2,16 +2,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status, Request
 from fastapi.responses import JSONResponse
 
-from app.models.assistant import Assistant
+from app.models.Assistants import Assistant
 from app.schemas.assistant import (
     AssistantCreate,
     AssistantUpdate,
-    Assistant as AssistantSchema,
     AssistantDeleteManyInput,
 )
 from app.schemas.core.paginations import PaginationParams
 from app.utils.db_helpers import (
-    get_all_items,
     get_items,
     get_item,
     create_item,
@@ -53,7 +51,7 @@ async def get_one(id: str, request: Request, db: AsyncSession) -> JSONResponse:
 
         return JSONResponse(
             status_code=status.HTTP_200_OK,
-            content={"ok": True, "payload": item.to_dict()},
+            content={"ok": True, "payload": item.to_json()},
         )
     except Exception as e:
         return await handle_error(request, e)
@@ -69,7 +67,7 @@ async def create(
         item = await create_item(db, Assistant, item)
         return JSONResponse(
             status_code=status.HTTP_201_CREATED,
-            content={"ok": True, "payload": item.to_dict()},
+            content={"ok": True, "payload": item.to_json()},
         )
     except Exception as e:
         return await handle_error(request, e)
@@ -88,7 +86,7 @@ async def update(
             raise build_error_object(status.HTTP_404_NOT_FOUND, "Assistant not found")
         return JSONResponse(
             status_code=status.HTTP_200_OK,
-            content={"ok": True, "payload": updated_item},
+            content={"ok": True, "payload": updated_item.to_json()},
         )
     except Exception as e:
         return await handle_error(request, e)

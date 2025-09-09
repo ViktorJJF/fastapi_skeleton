@@ -15,7 +15,6 @@ from app.schemas.assistant import (
 from app.schemas.core.paginations import PaginationParams
 from app.schemas.core.responses import (
     SingleItemResponse,
-    ListResponse,
     PaginatedApiResponse,
     DeleteResponse,
     DeleteManyResponse,

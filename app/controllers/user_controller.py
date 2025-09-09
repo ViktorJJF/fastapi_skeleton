@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.future import select
 import uuid
 
-from app.models.user import User
+from app.models.Users import User
 from app.schemas.user import (
     UserCreate,
     UserUpdate,
@@ -13,11 +13,8 @@ from app.schemas.user import (
 )
 from app.schemas.core.paginations import PaginationParams
 from app.utils.db_helpers import (
-    get_all_items,
     get_items,
     get_item,
-    # create_item, # Use custom create logic for hashing password
-    # update_item, # Use custom update logic for hashing password
     delete_item,
     check_query_string,
     delete_items_by_ids,
@@ -187,25 +184,6 @@ async def get_one(id: str, request: Request, db: AsyncSession) -> JSONResponse:
         )
     except Exception as e:
         return await handle_error(request, e)
-
-
-async def list_all(request: Request, db: AsyncSession) -> JSONResponse:
-    """
-    List all users.
-    """
-    try:
-        items = await get_all_items(db, User)
-        # Validate each item with the User schema before returning
-        validated_items = [
-            UserSchema.model_validate(item).model_dump() for item in items
-        ]
-        return JSONResponse(
-            status_code=status.HTTP_200_OK,
-            content={"ok": True, "payload": validated_items},
-        )
-    except Exception as e:
-        return await handle_error(request, e)
-
 
 async def list_paginated(
     request: Request, pagination: PaginationParams, db: AsyncSession
