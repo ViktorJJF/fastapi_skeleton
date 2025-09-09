@@ -2,9 +2,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status, Request
 from fastapi.responses import JSONResponse
 
-# Remove direct import of sqlalchemy_delete if no longer needed elsewhere in the file
-# from sqlalchemy import delete as sqlalchemy_delete
-
 from app.models.assistant import Assistant
 from app.schemas.assistant import (
     AssistantCreate,
@@ -21,7 +18,7 @@ from app.utils.db_helpers import (
     update_item,
     delete_item,
     check_query_string,
-    delete_items_by_ids,  # Import the new helper function
+    delete_items_by_ids,
 )
 from app.utils.error_handling import handle_error, is_id_valid, build_error_object
 
@@ -33,7 +30,6 @@ async def list_paginated(
     List assistants with pagination.
     """
     try:
-        # Pass the pagination model directly to check_query_string
         processed_query = await check_query_string(pagination, Assistant)
         result = await get_items(db, Assistant, request, processed_query)
 
@@ -50,10 +46,7 @@ async def get_one(id: str, request: Request, db: AsyncSession) -> JSONResponse:
     Get one assistant by ID.
     """
     try:
-        # Validate ID
         valid_id = is_id_valid(id)
-
-        # Get item
         item = await get_item(db, Assistant, valid_id)
         if not item:
             raise build_error_object(status.HTTP_404_NOT_FOUND, "Assistant not found")
@@ -73,7 +66,6 @@ async def create(
     Create a new item.
     """
     try:
-        # Create item
         item = await create_item(db, Assistant, item)
         return JSONResponse(
             status_code=status.HTTP_201_CREATED,
@@ -90,10 +82,7 @@ async def update(
     Update an item.
     """
     try:
-        # Validate ID
         valid_id = is_id_valid(id)
-
-        # Update item
         updated_item = await update_item(db, Assistant, valid_id, item)
         if not updated_item:
             raise build_error_object(status.HTTP_404_NOT_FOUND, "Assistant not found")
@@ -110,10 +99,7 @@ async def delete(id: str, request: Request, db: AsyncSession) -> JSONResponse:
     Delete an item.
     """
     try:
-        # Validate ID
         valid_id = is_id_valid(id)
-
-        # Delete item
         deleted = await delete_item(db, Assistant, valid_id)
         if not deleted:
             raise build_error_object(status.HTTP_404_NOT_FOUND, "Assistant not found")
@@ -137,7 +123,6 @@ async def delete_many(
         invalid_ids = []
         for assistant_id in item.ids:
             try:
-                # Assuming is_id_valid returns an integer or can be cast to one if needed by delete_items_by_ids
                 valid_id = is_id_valid(assistant_id)
                 valid_ids.append(valid_id)
             except HTTPException:
@@ -154,7 +139,6 @@ async def delete_many(
                 status.HTTP_400_BAD_REQUEST, "No valid IDs provided for deletion."
             )
 
-        # Use the helper function for bulk delete
         deleted_count = await delete_items_by_ids(db, Assistant, valid_ids)
 
         return JSONResponse(

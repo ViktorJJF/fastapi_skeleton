@@ -6,6 +6,7 @@ import bcrypt
 
 from app.database.connection import Base
 
+
 class User(Base):
     __tablename__ = "users"
 
@@ -21,12 +22,6 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    def set_password(self, password: str):
-        self.hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-
-    def check_password(self, password: str) -> bool:
-        return bcrypt.checkpw(password.encode('utf-8'), self.hashed_password.encode('utf-8'))
-
     def to_dict(self):
         return {
             "id": str(self.id),
@@ -37,4 +32,4 @@ class User(Base):
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
             # Avoid exposing sensitive fields like password or tokens unless necessary
-        } 
+        }

@@ -9,7 +9,9 @@ from pydantic import BaseModel
 from sqlalchemy.orm import DeclarativeBase
 from datetime import datetime
 
-from app.utils.pagination import paginate, PaginatedResponse
+from app.schemas.core.paginations import (
+    PaginationParams as CorePaginationParams,
+)
 
 ModelType = TypeVar("ModelType", bound=DeclarativeBase)
 SchemaType = TypeVar("SchemaType", bound=BaseModel)
@@ -42,18 +44,18 @@ async def list_init_options(request: Request) -> Dict[str, Any]:
 
 
 async def check_query_string(
-    query_params: Union[Dict[str, Any], "PaginationParams"], model: Type[ModelType]
+    query_params: Union[Dict[str, Any], CorePaginationParams], model: Type[ModelType]
 ) -> Dict[str, Any]:
     """
     Process query parameters for filtering, converting types based on the model.
-    Can accept either a dictionary of query parameters or a PaginationParams object.
+    Can accept either a dictionary of query parameters or a CorePaginationParams object.
     """
     queries = {}
     model_mapper = inspect(model)
 
-    # Check if input is a PaginationParams object
+    # Check if input is a CorePaginationParams object
     if hasattr(query_params, "model_dump"):
-        # Convert PaginationParams to dictionary
+        # Convert CorePaginationParams to dictionary
         pagination_dict = query_params.model_dump(exclude_unset=True)
 
         # Process pagination parameters
@@ -285,7 +287,6 @@ async def get_items(
     query = query.offset((page - 1) * limit).limit(limit)
 
     # Apply sorting
-    # sort_field = options["sort"] # Use sort_by dictionary
     for field, direction in sort_by.items():
         if hasattr(model, field):
             column = getattr(model, field)
@@ -392,7 +393,9 @@ async def update_item(
     try:
         # Convert Pydantic models to dict if needed
         if isinstance(data, BaseModel):
-            data_dict = data.dict(exclude_unset=True)
+            data_dict = data.model_dump(
+                exclude_unset=True
+            )
         else:
             data_dict = data
 

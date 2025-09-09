@@ -29,20 +29,6 @@ router = APIRouter()
 
 
 @router.get(
-    "/all",
-    response_model=ListResponse,
-    dependencies=[Depends(require_admin_or_superadmin)],
-)
-async def list_all_assistants(
-    request: Request, response: Response, db: AsyncSession = Depends(get_db)
-):
-    """
-    List all assistants. Requires ADMIN or SUPERADMIN role.
-    """
-    return await assistant_controller.list_all(request, db)
-
-
-@router.get(
     "/",
     response_model=PaginatedApiResponse,
     dependencies=[Depends(require_admin_or_superadmin)],
