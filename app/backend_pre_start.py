@@ -24,13 +24,13 @@ wait_seconds = 1
 async def init(db_engine: Engine) -> None:
     """
     Initialize the database connection.
-    
+
     This function attempts to create a database session and execute a simple query
     to verify that the database is available and responsive.
-    
+
     Args:
         db_engine: SQLAlchemy engine to use for connection
-        
+
     Raises:
         Exception: If the database cannot be reached
     """
@@ -49,7 +49,7 @@ async def init(db_engine: Engine) -> None:
 def main() -> None:
     """
     Main entry point for the backend pre-start script.
-    
+
     This function initializes the service by verifying that the database
     connection is working properly.
     """
@@ -59,4 +59,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main() 
+    main()

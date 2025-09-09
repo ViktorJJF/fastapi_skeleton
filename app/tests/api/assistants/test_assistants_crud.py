@@ -11,10 +11,7 @@ async def test_create_assistant(client: AsyncClient):
     """
     response = await client.post(
         f"{config.API_V1_STR}/assistants/",
-        json={
-            "name": "Test Assistant",
-            "description": "This is a test assistant"
-        },
+        json={"name": "Test Assistant", "description": "This is a test assistant"},
     )
     assert response.status_code == 201
     data = response.json()
@@ -34,10 +31,10 @@ async def test_get_assistants(client: AsyncClient):
         f"{config.API_V1_STR}/assistants/",
         json={
             "name": "List Test Assistant",
-            "description": "For testing list endpoint"
+            "description": "For testing list endpoint",
         },
     )
-    
+
     # Get all assistants
     response = await client.get(f"{config.API_V1_STR}/assistants/")
     assert response.status_code == 200
@@ -56,13 +53,10 @@ async def test_get_assistant(client: AsyncClient):
     # First create an assistant
     create_response = await client.post(
         f"{config.API_V1_STR}/assistants/",
-        json={
-            "name": "Get Test Assistant",
-            "description": "For testing get endpoint"
-        },
+        json={"name": "Get Test Assistant", "description": "For testing get endpoint"},
     )
     assistant_id = create_response.json()["payload"]["id"]
-    
+
     # Get the assistant by ID
     get_response = await client.get(f"{config.API_V1_STR}/assistants/{assistant_id}")
     assert get_response.status_code == 200
@@ -81,19 +75,14 @@ async def test_update_assistant(client: AsyncClient):
     # First create an assistant
     create_response = await client.post(
         f"{config.API_V1_STR}/assistants/",
-        json={
-            "name": "Update Test Assistant",
-            "description": "Original description"
-        },
+        json={"name": "Update Test Assistant", "description": "Original description"},
     )
     assistant_id = create_response.json()["payload"]["id"]
-    
+
     # Update the assistant
     update_response = await client.put(
         f"{config.API_V1_STR}/assistants/{assistant_id}",
-        json={
-            "description": "Updated description"
-        },
+        json={"description": "Updated description"},
     )
     assert update_response.status_code == 200
     data = update_response.json()
@@ -113,18 +102,20 @@ async def test_delete_assistant(client: AsyncClient):
         f"{config.API_V1_STR}/assistants/",
         json={
             "name": "Delete Test Assistant",
-            "description": "For testing delete endpoint"
+            "description": "For testing delete endpoint",
         },
     )
     assistant_id = create_response.json()["payload"]["id"]
-    
+
     # Delete the assistant
-    delete_response = await client.delete(f"{config.API_V1_STR}/assistants/{assistant_id}")
+    delete_response = await client.delete(
+        f"{config.API_V1_STR}/assistants/{assistant_id}"
+    )
     assert delete_response.status_code == 200
     data = delete_response.json()
     assert data["ok"] is True
     assert "message" in data
-    
+
     # Verify the assistant is gone
     get_response = await client.get(f"{config.API_V1_STR}/assistants/{assistant_id}")
-    assert get_response.status_code == 404 
+    assert get_response.status_code == 404

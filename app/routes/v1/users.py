@@ -9,7 +9,7 @@ from app.schemas.user import (
     UserDeleteManyInput,
 )
 from app.schemas.core.paginations import PaginationParams
-from app.db.session import get_db  # Corrected import path
+from app.database.connection import get_db  # Corrected import path
 from app.dependencies.security import (
     get_current_active_user,
     require_admin_or_superadmin,

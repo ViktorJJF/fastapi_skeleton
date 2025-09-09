@@ -5,7 +5,7 @@ from sqlalchemy.future import select
 from datetime import datetime, timedelta
 import uuid
 
-from app.db.session import get_db
+from app.database.connection import get_db
 from app.models.user import User
 from app.models.auth import ForgotPassword, UserAccess
 from app.schemas.auth import (

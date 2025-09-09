@@ -7,6 +7,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
 from fastapi import FastAPI, Request
@@ -18,8 +19,11 @@ from loguru import logger
 from app.routes.v1.api import api_router
 from app.core.config import config
 from app.core import logger as _  # Import to ensure logger setup is loaded
-from app.database.redis import redis_client  # Import from database package instead of direct file
+from app.database.redis import (
+    redis_client,
+)  # Import from database package instead of direct file
 from app.database.connection import engine
+
 # from app.middlewares.logging_middleware import logging_middleware
 from app.utils.error_handling import setup_global_exception_handler, handle_error
 
@@ -41,18 +45,20 @@ async def test_database_connection() -> Tuple[bool, str]:
         logger.error(f"Unexpected error testing database connection: {error_msg}")
         return False, error_msg
 
+
 # --- Service status logging functions ---
 def log_startup_banner():
     """Log application startup banner with key information."""
     logger.info(f"🚀 Starting {config.PROJECT_NAME}")
     logger.info(f"📊 Environment: {'Development' if config.DEBUG else 'Production'}")
 
+
 def log_service_endpoints():
     """Log available service endpoints."""
     base_url = f"http://localhost:{config.PORT}"
 
-    
     logger.info(f"  📚 API Documentation: {base_url}/docs")
+
 
 def log_service_status(db_connected: bool, redis_connected: bool, db_error: str = ""):
     """Log final service status summary."""
@@ -72,12 +78,16 @@ def log_service_status(db_connected: bool, redis_connected: bool, db_error: str 
 
     logger.info(f"🌟 {config.PROJECT_NAME} running on http://localhost:{config.PORT}")
 
-# --- Define the exception handler --- 
-async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+
+# --- Define the exception handler ---
+async def validation_exception_handler(
+    request: Request, exc: RequestValidationError
+) -> JSONResponse:
     """Custom handler for FastAPI validation errors."""
     logger.warning(f"Caught validation error: {exc.errors()}")
     # Use our existing handle_error function
     return await handle_error(request, exc)
+
 
 def create_application() -> FastAPI:
     """
@@ -85,13 +95,13 @@ def create_application() -> FastAPI:
     """
     # Set up global exception handler for uncaught exceptions
     setup_global_exception_handler()
-    
+
     # Define lifespan context manager
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         # Startup logic
         log_startup_banner()
-        
+
         # Initialize service connection status
         db_connected = False
         db_error = ""
@@ -105,12 +115,12 @@ def create_application() -> FastAPI:
         except Exception as e:
             db_connected = False
             db_error = str(e)
-        
+
         # Test Redis connection with retries
         redis_connected = False
         max_retries = 3
         retry_delay = 2
-        
+
         for attempt in range(1, max_retries + 1):
             try:
                 await redis_client.connect()
@@ -119,19 +129,20 @@ def create_application() -> FastAPI:
             except Exception as e:
                 if attempt < max_retries:
                     import asyncio
+
                     await asyncio.sleep(retry_delay)
                 else:
                     redis_connected = False
         logger.info(f"Application running in port: {config.PORT}")
         # Log available endpoints
         log_service_endpoints()
-        
+
         # Log final service status
         log_service_status(db_connected, redis_connected, db_error)
-            
+
         # Yield control to FastAPI
         yield
-        
+
         # Shutdown logic
         logger.info("🛑 Shutting down application...")
         try:
@@ -141,9 +152,9 @@ def create_application() -> FastAPI:
                 logger.info("✅ Redis connection closed")
         except Exception as e:
             logger.warning(f"⚠️  Error closing Redis connection: {e}")
-        
+
         logger.info("👋 Application shutdown complete")
-    
+
     # Create FastAPI app with lifespan context manager
     app = FastAPI(
         title=config.PROJECT_NAME,
@@ -167,7 +178,7 @@ def create_application() -> FastAPI:
     # Include API router
     app.include_router(api_router, prefix=config.API_V1_STR)
 
-    # --- Register the custom handler AFTER app creation --- 
+    # --- Register the custom handler AFTER app creation ---
     app.add_exception_handler(RequestValidationError, validation_exception_handler)
 
     return app

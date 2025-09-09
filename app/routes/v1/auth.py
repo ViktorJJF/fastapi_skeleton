@@ -14,7 +14,7 @@ from app.schemas.auth import (
     VerifyEmailRequest,
 )
 from app.schemas.user import UserCreate
-from app.db.session import get_db  # Corrected import path
+from app.database.connection import get_db  # Corrected import path
 from app.schemas.core.responses import (
     ApiResponse,
     SingleItemResponse,  # Import standard response types

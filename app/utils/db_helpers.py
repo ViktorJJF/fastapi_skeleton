@@ -32,7 +32,7 @@ async def list_init_options(request: Request) -> Dict[str, Any]:
     sort_by = build_sort(sort, order)
     page = int(query_params.get("page", "1"))
     limit = int(query_params.get("limit", "10"))
-    
+
     return {
         "order": order,
         "sort": sort_by,
@@ -41,7 +41,9 @@ async def list_init_options(request: Request) -> Dict[str, Any]:
     }
 
 
-async def check_query_string(query_params: Union[Dict[str, Any], "PaginationParams"], model: Type[ModelType]) -> Dict[str, Any]:
+async def check_query_string(
+    query_params: Union[Dict[str, Any], "PaginationParams"], model: Type[ModelType]
+) -> Dict[str, Any]:
     """
     Process query parameters for filtering, converting types based on the model.
     Can accept either a dictionary of query parameters or a PaginationParams object.
@@ -53,13 +55,13 @@ async def check_query_string(query_params: Union[Dict[str, Any], "PaginationPara
     if hasattr(query_params, "model_dump"):
         # Convert PaginationParams to dictionary
         pagination_dict = query_params.model_dump(exclude_unset=True)
-        
+
         # Process pagination parameters
         queries["page"] = pagination_dict.get("page", 1)
         queries["size"] = pagination_dict.get("size", 10)
         queries["sort"] = pagination_dict.get("sort_by") or "created_at"
         queries["order"] = pagination_dict.get("sort_order") or "asc"
-        
+
         # Add search parameter if provided
         if pagination_dict.get("search"):
             queries["filter"] = pagination_dict.get("search")
@@ -68,7 +70,7 @@ async def check_query_string(query_params: Union[Dict[str, Any], "PaginationPara
         # Process as dictionary (for backwards compatibility)
         filter_value = query_params.get("filter")
         fields = query_params.get("fields")
-        
+
         # Process pagination parameters
         try:
             page = int(query_params.get("page", "1"))
@@ -83,16 +85,16 @@ async def check_query_string(query_params: Union[Dict[str, Any], "PaginationPara
         # Add processed pagination parameters
         queries["page"] = page
         queries["size"] = size
-        
+
         # Copy other query params
         for key, value in query_params.items():
             if key in ["filter", "fields", "page", "size", "limit"]:
                 continue  # Skip special keys already handled
-            
+
             if key in ["order", "sort"]:
                 queries[key] = value  # Keep sort/order as strings
                 continue
-            
+
             # Process other parameters
             queries[key] = value
 
@@ -100,7 +102,7 @@ async def check_query_string(query_params: Union[Dict[str, Any], "PaginationPara
         if filter_value and fields:
             queries["filter"] = filter_value
             queries["fields"] = fields
-            
+
     # Process query parameters for type conversion based on model columns
     processed_queries = {}
     for key, value in queries.items():
@@ -108,12 +110,12 @@ async def check_query_string(query_params: Union[Dict[str, Any], "PaginationPara
         if key in ["filter", "fields", "filter_conditions"]:
             processed_queries[key] = value
             continue
-            
+
         # For pagination-specific parameters, just copy them
         if key in ["page", "size", "sort", "order"]:
             processed_queries[key] = value
             continue
-            
+
         # Check if the key is a column in the model
         if key in model_mapper.columns:
             column = model_mapper.columns[key]
@@ -122,9 +124,9 @@ async def check_query_string(query_params: Union[Dict[str, Any], "PaginationPara
                 # Attempt conversion
                 if target_type is bool:
                     # Handle boolean conversion explicitly (e.g., 'true', 'false', '1', '0')
-                    if isinstance(value, str) and value.lower() in ['true', '1']:
+                    if isinstance(value, str) and value.lower() in ["true", "1"]:
                         converted_value = True
-                    elif isinstance(value, str) and value.lower() in ['false', '0']:
+                    elif isinstance(value, str) and value.lower() in ["false", "0"]:
                         converted_value = False
                     elif isinstance(value, (bool, int)):
                         converted_value = bool(value)
@@ -141,7 +143,7 @@ async def check_query_string(query_params: Union[Dict[str, Any], "PaginationPara
             except (ValueError, TypeError) as e:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Invalid value for parameter '{key}'. Expected type {target_type.__name__}, but received '{value}'. Error: {e}"
+                    detail=f"Invalid value for parameter '{key}'. Expected type {target_type.__name__}, but received '{value}'. Error: {e}",
                 )
         else:
             # If not a model column, keep it as is (string)
@@ -157,17 +159,21 @@ async def check_query_string(query_params: Union[Dict[str, Any], "PaginationPara
                 # Ensure the filter field exists in the model before adding
                 if field in model_mapper.columns:
                     # We don't type-convert the filter_value itself here, as 'ilike' expects a string pattern
-                    filter_conditions.append({field: {"ilike": f"%{processed_queries['filter']}%"}})
+                    filter_conditions.append(
+                        {field: {"ilike": f"%{processed_queries['filter']}%"}}
+                    )
                 # else: Optionally warn or error if filter field doesn't exist
 
             # Return combined filter conditions with other queries
             if filter_conditions:
                 processed_queries["filter_conditions"] = filter_conditions
-        
+
         return processed_queries  # Return processed queries
     except Exception as e:
         # Catch potential errors during filter processing specifically
-        raise HTTPException(status_code=422, detail=f"Error processing filter parameters: {str(e)}")
+        raise HTTPException(
+            status_code=422, detail=f"Error processing filter parameters: {str(e)}"
+        )
 
 
 async def get_all_items(db: AsyncSession, model: Type[ModelType]) -> List[ModelType]:
@@ -183,11 +189,11 @@ async def get_items(
     db: AsyncSession,
     model: Type[ModelType],
     request: Request,
-    processed_query: Dict[str, Any]
+    processed_query: Dict[str, Any],
 ) -> Dict[str, Any]:
     """
     Get items with pagination, sorting, and filtering.
-    
+
     Parameters:
     -----------
     db: AsyncSession
@@ -198,7 +204,7 @@ async def get_items(
         The FastAPI request object containing query parameters.
     processed_query: Dict[str, Any]
         Processed query parameters with proper type conversion.
-        
+
     Query Parameters:
     ----------------
     page: int
@@ -213,10 +219,10 @@ async def get_items(
         Text to search across specified fields
     fields: str
         Comma-separated list of fields to apply the filter on
-        
+
     Additional model-specific filters can be provided as query parameters.
     Any parameter that matches a column name in the model will be used for filtering.
-    
+
     Returns:
     --------
     Dict[str, Any]
@@ -239,8 +245,10 @@ async def get_items(
     # Extract pagination options after processing
     page = processed_query.pop("page", 1)
     limit = processed_query.pop("size", 10)
-    order = processed_query.pop("order", "asc") # Default order
-    sort_field_name = processed_query.pop("sort", "id") # Default sort field, assuming 'id' exists
+    order = processed_query.pop("order", "asc")  # Default order
+    sort_field_name = processed_query.pop(
+        "sort", "id"
+    )  # Default sort field, assuming 'id' exists
 
     # Build sort dictionary
     sort_by = build_sort(sort_field_name, order)
@@ -264,7 +272,7 @@ async def get_items(
     # Apply other filters (now with correct types from processed_query)
     for field, value in processed_query.items():
         if hasattr(model, field):
-             # Use the pre-validated and type-converted value directly
+            # Use the pre-validated and type-converted value directly
             query = query.where(getattr(model, field) == value)
         # else: Decide how to handle query params that are not model fields
 
@@ -292,11 +300,18 @@ async def get_items(
     items = result.scalars().all()
 
     # Convert items to dictionaries
-    items_dict = [item.to_dict() if hasattr(item, 'to_dict') else dict(item) if hasattr(item, 'keys') else vars(item) for item in items]
+    items_dict = [
+        (
+            item.to_dict()
+            if hasattr(item, "to_dict")
+            else dict(item) if hasattr(item, "keys") else vars(item)
+        )
+        for item in items
+    ]
 
     # Calculate total pages
     total_pages = (total_count + limit - 1) // limit if limit > 0 else 0
-    
+
     # Calculate previous and next pages
     has_prev_page = page > 1
     has_next_page = page < total_pages
@@ -315,36 +330,42 @@ async def get_items(
         "hasNextPage": has_next_page,
         "prevPage": prev_page,
         "nextPage": next_page,
-        "payload": items_dict
+        "payload": items_dict,
     }
 
 
-async def get_item(db: AsyncSession, model: Type[ModelType], id: int) -> Optional[ModelType]:
+async def get_item(
+    db: AsyncSession, model: Type[ModelType], id: int
+) -> Optional[ModelType]:
     """
     Get a single item by ID.
     """
     query = select(model).where(model.id == id)
     result = await db.execute(query)
     item = result.scalars().first()
-    
+
     return item
 
 
-async def filter_items(db: AsyncSession, model: Type[ModelType], filters: Dict[str, Any]) -> List[ModelType]:
+async def filter_items(
+    db: AsyncSession, model: Type[ModelType], filters: Dict[str, Any]
+) -> List[ModelType]:
     """
     Filter items by fields.
     """
     query = select(model)
-    
+
     for field, value in filters.items():
         if hasattr(model, field):
             query = query.where(getattr(model, field) == value)
-    
+
     result = await db.execute(query)
     return result.scalars().all()
 
 
-async def create_item(db: AsyncSession, model: Type[ModelType], data: Dict[str, Any]) -> ModelType:
+async def create_item(
+    db: AsyncSession, model: Type[ModelType], data: Dict[str, Any]
+) -> ModelType:
     """
     Create a new item.
     """
@@ -359,7 +380,12 @@ async def create_item(db: AsyncSession, model: Type[ModelType], data: Dict[str, 
         raise HTTPException(status_code=422, detail=f"Error creating item: {str(e)}")
 
 
-async def update_item(db: AsyncSession, model: Type[ModelType], id: int, data: Union[Dict[str, Any], BaseModel]) -> Optional[ModelType]:
+async def update_item(
+    db: AsyncSession,
+    model: Type[ModelType],
+    id: int,
+    data: Union[Dict[str, Any], BaseModel],
+) -> Optional[ModelType]:
     """
     Update an existing item.
     """
@@ -369,32 +395,34 @@ async def update_item(db: AsyncSession, model: Type[ModelType], id: int, data: U
             data_dict = data.dict(exclude_unset=True)
         else:
             data_dict = data
-            
+
         stmt = update(model).where(model.id == id).values(**data_dict).returning(model)
         result = await db.execute(stmt)
         await db.commit()
-        
+
         # Get the updated item
         updated_item = result.scalars().first()
-        
+
         if not updated_item:
             return None
-            
+
         return updated_item.to_dict()
     except Exception as e:
         await db.rollback()
         raise HTTPException(status_code=422, detail=f"Error updating item: {str(e)}")
 
 
-async def delete_item(db: AsyncSession, model: Type[ModelType], id: int) -> Optional[ModelType]:
+async def delete_item(
+    db: AsyncSession, model: Type[ModelType], id: int
+) -> Optional[ModelType]:
     """
     Delete an item.
     """
     item = await get_item(db, model, id)
-    
+
     if not item:
         return None
-    
+
     try:
         await db.delete(item)
         await db.commit()
@@ -404,7 +432,9 @@ async def delete_item(db: AsyncSession, model: Type[ModelType], id: int) -> Opti
         raise HTTPException(status_code=422, detail=f"Error deleting item: {str(e)}")
 
 
-async def delete_items_by_ids(db: AsyncSession, model: Type[ModelType], ids: List[int]) -> int:
+async def delete_items_by_ids(
+    db: AsyncSession, model: Type[ModelType], ids: List[int]
+) -> int:
     """
     Delete multiple items by their IDs.
     Returns the number of rows deleted.
@@ -420,4 +450,6 @@ async def delete_items_by_ids(db: AsyncSession, model: Type[ModelType], ids: Lis
     except Exception as e:
         await db.rollback()
         # Consider logging the error here
-        raise HTTPException(status_code=500, detail=f"Error performing bulk delete: {str(e)}") 
+        raise HTTPException(
+            status_code=500, detail=f"Error performing bulk delete: {str(e)}"
+        )
