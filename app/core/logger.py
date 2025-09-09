@@ -41,33 +41,37 @@ class GoogleCloudLoggingSink:
     Custom sink for Google Cloud Logging.
     Requires google-cloud-logging package to be installed.
     """
+
     def __init__(self, log_name: str = "albedo_api", project_id: Optional[str] = None):
         """
         Initialize Google Cloud Logging client.
-        
+
         Args:
             log_name: Name of the log in Google Cloud
             project_id: Google Cloud project ID (if None, will be autodetected)
         """
         try:
             from google.cloud import logging as google_logging
+
             self.client = google_logging.Client(project=project_id)
             self.logger = self.client.logger(log_name)
             self.enabled = True
         except ImportError:
-            logger.warning("google-cloud-logging not installed, Google Cloud Logging disabled")
+            logger.warning(
+                "google-cloud-logging not installed, Google Cloud Logging disabled"
+            )
             self.enabled = False
         except Exception as e:
             logger.warning(f"Failed to initialize Google Cloud Logging: {e}")
             self.enabled = False
-            
+
     def __call__(self, message):
         """
         Write a log entry to Google Cloud Logging.
         """
         if not self.enabled:
             return
-            
+
         record = message.record
         try:
             # Convert to dict format expected by Google Cloud Logging
@@ -82,13 +86,13 @@ class GoogleCloudLoggingSink:
                 "file": record["file"].name,
                 "environment": os.getenv("PYTHON_ENV", "development"),
                 "service": config.PROJECT_NAME,
-                "host": socket.gethostname()
+                "host": socket.gethostname(),
             }
-            
+
             # Add exception info if present
             if record["exception"] is not None:
                 payload["exception"] = str(record["exception"])
-                
+
             # Write to Google Cloud Logging
             self.logger.log_struct(payload, severity=severity)
         except Exception as e:
@@ -101,32 +105,38 @@ class AzureMonitorSink:
     Custom sink for Azure Application Insights.
     Requires opencensus-ext-azure package to be installed.
     """
+
     def __init__(self, connection_string: Optional[str] = None):
         """
         Initialize Azure Application Insights client.
-        
+
         Args:
             connection_string: Azure Application Insights connection string
         """
-        self.connection_string = connection_string or config.AZURE_APPINSIGHTS_CONNECTION_STRING
+        self.connection_string = (
+            connection_string or config.AZURE_APPINSIGHTS_CONNECTION_STRING
+        )
         try:
             from opencensus.ext.azure.log_exporter import AzureLogHandler
+
             self.handler = AzureLogHandler(connection_string=self.connection_string)
             self.enabled = True
         except ImportError:
-            logger.warning("opencensus-ext-azure not installed, Azure Monitor logging disabled")
+            logger.warning(
+                "opencensus-ext-azure not installed, Azure Monitor logging disabled"
+            )
             self.enabled = False
         except Exception as e:
             logger.warning(f"Failed to initialize Azure Monitor logging: {e}")
             self.enabled = False
-    
+
     def __call__(self, message):
         """
         Write a log entry to Azure Application Insights.
         """
         if not self.enabled:
             return
-            
+
         record = message.record
         try:
             # Create a Python standard logging record
@@ -139,15 +149,15 @@ class AzureMonitorSink:
                 args=(),
                 exc_info=record["exception"],
             )
-            
+
             # Add custom properties
             log_record.custom_dimensions = {
                 "environment": os.getenv("PYTHON_ENV", "development"),
                 "service": config.PROJECT_NAME,
                 "host": socket.gethostname(),
-                "function": record["function"]
+                "function": record["function"],
             }
-            
+
             # Emit to Azure
             self.handler.emit(log_record)
         except Exception as e:
@@ -170,7 +180,7 @@ def setup_logging():
 
     # Configure loguru
     log_level = "DEBUG" if config.DEBUG else "INFO"
-    
+
     # Define handlers - only console logging, no file logging
     handlers = [
         # Console handler
@@ -181,43 +191,49 @@ def setup_logging():
             "format": "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <level>{message}</level>",
         }
     ]
-    
+
     # Add Google Cloud Logging if configured
     if getattr(config, "GOOGLE_CLOUD_LOGGING_ENABLED", False):
-        handlers.append({
-            "sink": GoogleCloudLoggingSink(
-                log_name=getattr(config, "GOOGLE_CLOUD_LOG_NAME", "albedo_api"),
-                project_id=getattr(config, "GOOGLE_CLOUD_PROJECT_ID", None)
-            ),
-            "level": "INFO",
-            "format": "{message}",  # The sink handles formatting
-            "serialize": False,
-        })
-    
+        handlers.append(
+            {
+                "sink": GoogleCloudLoggingSink(
+                    log_name=getattr(config, "GOOGLE_CLOUD_LOG_NAME", "albedo_api"),
+                    project_id=getattr(config, "GOOGLE_CLOUD_PROJECT_ID", None),
+                ),
+                "level": "INFO",
+                "format": "{message}",  # The sink handles formatting
+                "serialize": False,
+            }
+        )
+
     # Add Azure Monitor if configured
     if getattr(config, "AZURE_MONITOR_ENABLED", False):
-        handlers.append({
-            "sink": AzureMonitorSink(
-                connection_string=getattr(config, "AZURE_APPINSIGHTS_CONNECTION_STRING", None)
-            ),
-            "level": "INFO",
-            "format": "{message}",  # The sink handles formatting
-            "serialize": False,
-        })
-    
+        handlers.append(
+            {
+                "sink": AzureMonitorSink(
+                    connection_string=getattr(
+                        config, "AZURE_APPINSIGHTS_CONNECTION_STRING", None
+                    )
+                ),
+                "level": "INFO",
+                "format": "{message}",  # The sink handles formatting
+                "serialize": False,
+            }
+        )
+
     # Configure loguru with all handlers
     logger.configure(handlers=handlers)
-    
+
     # Log startup information
     logger.info(f"Logging initialized: level={log_level}, console_only=True")
     logger.info(f"Environment: {os.getenv('PYTHON_ENV', 'development')}")
-    
+
     # Register atexit handler to flush logs
     def _flush_logs():
         logger.info("Application shutting down, flushing logs")
-    
+
     atexit.register(_flush_logs)
 
 
 # Setup logging when module is imported
-setup_logging() 
+setup_logging()

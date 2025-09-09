@@ -8,7 +8,9 @@ from app.core.config import config
 # Convert the PostgreSQL URL to an async URL
 SQLALCHEMY_DATABASE_URL = config.DATABASE_URL
 if SQLALCHEMY_DATABASE_URL.startswith("postgresql://"):
-    SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+    SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace(
+        "postgresql://", "postgresql+asyncpg://", 1
+    )
 
 # Create async engine
 engine = create_async_engine(
@@ -42,4 +44,4 @@ async def get_db():
             await session.rollback()
             raise
         finally:
-            await session.close() 
+            await session.close()

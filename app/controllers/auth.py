@@ -12,6 +12,7 @@ class AuthController:
     """
     Controller for authentication operations.
     """
+
     def __init__(self):
         self.router = APIRouter()
         self.setup_routes()
@@ -20,10 +21,11 @@ class AuthController:
         """
         Setup routes for authentication operations.
         """
+
         @self.router.post("/login", response_model=Token)
         async def login(
             form_data: OAuth2PasswordRequestForm = Depends(),
-            db: AsyncSession = Depends(get_db)
+            db: AsyncSession = Depends(get_db),
         ):
             """
             OAuth2 compatible token login, get an access token for future requests.
@@ -38,14 +40,14 @@ class AuthController:
                     detail="Incorrect username or password",
                     headers={"WWW-Authenticate": "Bearer"},
                 )
-            
+
             logger.info(f"User logged in: {form_data.username}")
             return {
                 "access_token": result["access_token"],
                 "token_type": result["token_type"],
-                "user": result["user"]
+                "user": result["user"],
             }
 
 
 # Create a singleton instance
-auth_controller = AuthController() 
+auth_controller = AuthController()

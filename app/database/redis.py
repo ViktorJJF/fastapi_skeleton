@@ -11,6 +11,7 @@ class RedisClient:
     """
     Redis client for caching and other operations.
     """
+
     def __init__(self):
         self.redis_url = config.REDIS_URL
         self.client = None

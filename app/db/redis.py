@@ -9,6 +9,7 @@ class RedisClient:
     """
     Redis client for caching and other operations.
     """
+
     def __init__(self):
         self.redis_url = config.REDIS_URL
         self.client = None
@@ -75,4 +76,4 @@ async def get_redis():
         yield redis_client
     finally:
         # We don't close the connection here as it's a singleton
-        pass 
+        pass

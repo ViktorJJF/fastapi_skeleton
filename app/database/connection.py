@@ -29,6 +29,7 @@ SessionLocal = sessionmaker(
 # Create base class for models
 Base = declarative_base()
 
+
 # Async database session dependency
 async def get_db():
     """
@@ -42,4 +43,4 @@ async def get_db():
             await session.rollback()
             raise
         finally:
-            await session.close() 
+            await session.close()

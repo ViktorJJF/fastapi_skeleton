@@ -40,4 +40,4 @@ def get_password_hash(password: str) -> str:
     """
     Hash a password.
     """
-    return pwd_context.hash(password) 
+    return pwd_context.hash(password)

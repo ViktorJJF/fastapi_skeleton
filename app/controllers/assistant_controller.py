@@ -25,6 +25,7 @@ from app.utils.db_helpers import (
 )
 from app.utils.error_handling import handle_error, is_id_valid, build_error_object
 
+
 async def list_paginated(
     request: Request, pagination: PaginationParams, db: AsyncSession
 ) -> JSONResponse:
@@ -63,6 +64,7 @@ async def get_one(id: str, request: Request, db: AsyncSession) -> JSONResponse:
         )
     except Exception as e:
         return await handle_error(request, e)
+
 
 async def create(
     item: AssistantCreate, request: Request, db: AsyncSession
@@ -171,5 +173,3 @@ async def delete_many(
         # Rollback might be redundant if the helper also rolls back, but good for safety
         await db.rollback()
         return await handle_error(request, e)
-
-
