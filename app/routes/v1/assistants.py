@@ -11,11 +11,11 @@ from app.schemas.assistant import (
     AssistantCreate,
     AssistantUpdate,
     AssistantDeleteManyInput,
+    AssistantResponse,
+    AssistantPaginatedResponse,
 )
 from app.schemas.core.paginations import PaginationParams
 from app.schemas.core.responses import (
-    SingleItemResponse,
-    PaginatedApiResponse,
     DeleteResponse,
     DeleteManyResponse,
 )
@@ -29,7 +29,7 @@ router = APIRouter()
 
 @router.get(
     "/",
-    response_model=PaginatedApiResponse,
+    response_model=AssistantPaginatedResponse,
     dependencies=[Depends(require_admin_or_superadmin)],
 )
 async def list_assistants(
@@ -46,7 +46,7 @@ async def list_assistants(
 
 @router.get(
     "/{id}",
-    response_model=SingleItemResponse,
+    response_model=AssistantResponse,
     dependencies=[Depends(require_admin_or_superadmin)],
 )
 async def get_assistant(
@@ -60,9 +60,9 @@ async def get_assistant(
 
 @router.post(
     "/",
-    response_model=SingleItemResponse,
+    response_model=AssistantResponse,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_admin_or_superadmin)],
+    # dependencies=[Depends(require_admin_or_superadmin)],
 )
 async def create_assistant(
     request: Request,
@@ -78,7 +78,7 @@ async def create_assistant(
 
 @router.put(
     "/{id}",
-    response_model=SingleItemResponse,
+    response_model=AssistantResponse,
     dependencies=[Depends(require_admin_or_superadmin)],
 )
 async def update_assistant(

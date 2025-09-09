@@ -7,6 +7,7 @@ from app.schemas.assistant import (
     AssistantCreate,
     AssistantUpdate,
     AssistantDeleteManyInput,
+    Assistant as AssistantSchema,
 )
 from app.schemas.core.paginations import PaginationParams
 from app.utils.db_helpers import (
@@ -31,9 +32,32 @@ async def list_paginated(
         processed_query = await check_query_string(pagination, Assistant)
         result = await get_items(db, Assistant, request, processed_query)
 
+        # Convert payload items to Pydantic models
+        assistants_data = result["payload"]
+        assistants = [
+            AssistantSchema.model_validate(assistant) for assistant in assistants_data
+        ]
+
+        # Build proper paginated response structure
+        response_data = {
+            "ok": True,
+            "payload": {
+                "payload": assistants,
+                "totalDocs": result["totalDocs"],
+                "limit": result["limit"],
+                "totalPages": result["totalPages"],
+                "page": result["page"],
+                "pagingCounter": result["pagingCounter"],
+                "hasPrevPage": result["hasPrevPage"],
+                "hasNextPage": result["hasNextPage"],
+                "prevPage": result["prevPage"],
+                "nextPage": result["nextPage"],
+            },
+        }
+
         return JSONResponse(
             status_code=status.HTTP_200_OK,
-            content=result,
+            content=response_data,
         )
     except Exception as e:
         return await handle_error(request, e)
@@ -49,9 +73,12 @@ async def get_one(id: str, request: Request, db: AsyncSession) -> JSONResponse:
         if not item:
             raise build_error_object(status.HTTP_404_NOT_FOUND, "Assistant not found")
 
+        # Convert database model to Pydantic model
+        assistant_schema = AssistantSchema.model_validate(item)
+
         return JSONResponse(
             status_code=status.HTTP_200_OK,
-            content={"ok": True, "payload": item.to_json()},
+            content={"ok": True, "payload": assistant_schema},
         )
     except Exception as e:
         return await handle_error(request, e)
@@ -64,10 +91,16 @@ async def create(
     Create a new item.
     """
     try:
-        item = await create_item(db, Assistant, item)
+        # Convert Pydantic model to dictionary for database creation
+        item_data = item.model_dump(exclude_unset=True)
+        created_item = await create_item(db, Assistant, item_data)
+
+        # Convert database model to Pydantic model
+        assistant_schema = AssistantSchema.model_validate(created_item)
+
         return JSONResponse(
             status_code=status.HTTP_201_CREATED,
-            content={"ok": True, "payload": item.to_json()},
+            content={"ok": True, "payload": assistant_schema},
         )
     except Exception as e:
         return await handle_error(request, e)
@@ -81,12 +114,18 @@ async def update(
     """
     try:
         valid_id = is_id_valid(id)
-        updated_item = await update_item(db, Assistant, valid_id, item)
+        # Convert Pydantic model to dictionary for database update
+        update_data = item.model_dump(exclude_unset=True)
+        updated_item = await update_item(db, Assistant, valid_id, update_data)
         if not updated_item:
             raise build_error_object(status.HTTP_404_NOT_FOUND, "Assistant not found")
+
+        # Convert database model to Pydantic model
+        assistant_schema = AssistantSchema.model_validate(updated_item)
+
         return JSONResponse(
             status_code=status.HTTP_200_OK,
-            content={"ok": True, "payload": updated_item.to_json()},
+            content={"ok": True, "payload": assistant_schema},
         )
     except Exception as e:
         return await handle_error(request, e)

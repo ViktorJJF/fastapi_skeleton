@@ -13,3 +13,4 @@ class Assistant(BaseModel):
 
     name: Mapped[str] = mapped_column(nullable=False)
     description: Mapped[Optional[str]] = mapped_column(nullable=True)
+    status: Mapped[str] = mapped_column(nullable=True)
