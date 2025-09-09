@@ -11,6 +11,7 @@ class Config(BaseSettings):
     API_V1_STR: str = "/api/v1"
     PROJECT_NAME: str = "Albedo API"
     DEBUG: bool = os.getenv("PYTHON_ENV", "development") == "development"
+    PORT: int = int(os.getenv("PORT", "4000"))
     
     # Security config
     SECRET_KEY: str = os.getenv("SECRET_KEY", "your_secret_key_here")
@@ -18,7 +19,7 @@ class Config(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
     
     # Database config
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@postgres:5432/albedo_db")
+    DATABASE_URL: str = os.getenv("DATABASE_URL")
     
     # Redis config
     REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")

@@ -1,15 +1,13 @@
 import os
 import redis.asyncio as aioredis
 import uvicorn
-import logging
 from contextlib import asynccontextmanager
+from typing import Tuple
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
-# only for local development
-if os.getenv("PYTHON_ENV") == "development":
-    from dotenv import load_dotenv
-    load_dotenv()
+from dotenv import load_dotenv
+load_dotenv()
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,83 +17,60 @@ from loguru import logger
 
 from app.routes.v1.api import api_router
 from app.core.config import config
+from app.core import logger as _  # Import to ensure logger setup is loaded
 from app.database.redis import redis_client  # Import from database package instead of direct file
 from app.database.connection import engine
 # from app.middlewares.logging_middleware import logging_middleware
 from app.utils.error_handling import setup_global_exception_handler, handle_error
 
-logging.basicConfig(
-    level=logging.INFO,  # Set the log level to INFO
-    format="%(asctime)s - %(levelname)s - %(message)s",  # Format for log messages
-)
 
 # --- Database connection test function ---
-async def test_database_connection() -> bool:
-    """Test database connectivity."""
+async def test_database_connection() -> Tuple[bool, str]:
+    """Test database connectivity and return status with error details."""
     try:
         async with engine.begin() as conn:
             result = await conn.execute(text("SELECT 1"))
             result.fetchone()  # fetchone() is not async, don't await it
-            return True
+            return True, ""
     except SQLAlchemyError as e:
-        logger.error(f"Database connection failed: {e}")
-        return False
+        error_msg = str(e)
+        logger.error(f"Database connection failed: {error_msg}")
+        return False, error_msg
     except Exception as e:
-        logger.error(f"Unexpected error testing database connection: {e}")
-        return False
+        error_msg = str(e)
+        logger.error(f"Unexpected error testing database connection: {error_msg}")
+        return False, error_msg
 
 # --- Service status logging functions ---
 def log_startup_banner():
     """Log application startup banner with key information."""
-    logger.info("=" * 80)
     logger.info(f"🚀 Starting {config.PROJECT_NAME}")
-    logger.info("=" * 80)
     logger.info(f"📊 Environment: {'Development' if config.DEBUG else 'Production'}")
-    logger.info(f"🔧 Debug Mode: {config.DEBUG}")
-    logger.info(f"🌐 API Version: {config.API_V1_STR}")
 
 def log_service_endpoints():
     """Log available service endpoints."""
-    base_url = "http://localhost:4000"  # This could be made configurable
-    
-    logger.info("-" * 50)
-    logger.info("📋 Available Endpoints:")
-    logger.info(f"  🏥 Health Check: {base_url}{config.API_V1_STR}/health")
-    logger.info(f"  🔐 Authentication: {base_url}{config.API_V1_STR}/auth/*")
-    logger.info(f"  👥 Users: {base_url}{config.API_V1_STR}/users/*")
-    logger.info(f"  🤖 Assistants: {base_url}{config.API_V1_STR}/assistants/*")
-    logger.info(f"  📚 API Documentation: {base_url}/docs")
-    logger.info(f"  📋 ReDoc Documentation: {base_url}/redoc")
-    logger.info(f"  📄 OpenAPI Schema: {base_url}{config.API_V1_STR}/openapi.json")
-    logger.info("-" * 50)
+    base_url = f"http://localhost:{config.PORT}"
 
-def log_service_status(db_connected: bool, redis_connected: bool):
+    
+    logger.info(f"  📚 API Documentation: {base_url}/docs")
+
+def log_service_status(db_connected: bool, redis_connected: bool, db_error: str = ""):
     """Log final service status summary."""
-    logger.info("🔍 Service Status Summary:")
-    
     # Database status
-    db_status = "✅ Connected" if db_connected else "❌ Failed"
-    logger.info(f"  🗄️  Database: {db_status}")
-    if not db_connected:
-        logger.error("  ⚠️  Database connection failed - some features may not work")
-    
-    # Redis status  
-    redis_status = "✅ Connected" if redis_connected else "❌ Failed"
-    logger.info(f"  🔴 Redis: {redis_status}")
-    if not redis_connected:
-        logger.warning("  ⚠️  Redis connection failed - caching/sessions may not work")
-    
-    # Overall status
-    if db_connected and redis_connected:
-        logger.info("🎉 All services connected successfully!")
-    elif db_connected or redis_connected:
-        logger.warning("⚠️  Some services failed to connect - application may have limited functionality")
+    if db_connected:
+        logger.info("🗄️  Database: ✅ Connected")
     else:
-        logger.error("❌ Critical services failed to connect - application may not function properly")
-    
-    logger.info("=" * 80)
-    logger.info(f"🌟 {config.PROJECT_NAME} is now running on http://localhost:4000")
-    logger.info("=" * 80)
+        logger.error("🗄️  Database: ❌ Failed")
+        if db_error:
+            logger.error(f"   Error: {db_error}")
+
+    # Redis status
+    if redis_connected:
+        logger.info("🔴 Redis: ✅ Connected")
+    else:
+        logger.error("🔴 Redis: ❌ Failed")
+
+    logger.info(f"🌟 {config.PROJECT_NAME} running on http://localhost:{config.PORT}")
 
 # --- Define the exception handler --- 
 async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
@@ -119,23 +94,19 @@ def create_application() -> FastAPI:
         
         # Initialize service connection status
         db_connected = False
+        db_error = ""
         redis_connected = False
-        
-        logger.info("🔌 Initializing service connections...")
-        
+
+        logger.info("🔌 Connecting to services...")
+
         # Test database connection
-        logger.info("📊 Testing database connection...")
         try:
-            db_connected = await test_database_connection()
-            if db_connected:
-                logger.info("✅ Database connection successful")
-            else:
-                logger.error("❌ Database connection failed")
+            db_connected, db_error = await test_database_connection()
         except Exception as e:
-            logger.error(f"❌ Database connection error: {e}")
+            db_connected = False
+            db_error = str(e)
         
         # Test Redis connection with retries
-        logger.info("🔴 Testing Redis connection...")
         redis_connected = False
         max_retries = 3
         retry_delay = 2
@@ -144,23 +115,19 @@ def create_application() -> FastAPI:
             try:
                 await redis_client.connect()
                 redis_connected = True
-                logger.info("✅ Redis connection successful")
                 break
             except Exception as e:
                 if attempt < max_retries:
-                    logger.warning(f"⚠️  Redis connection attempt {attempt} failed: {e}")
-                    logger.info(f"🔄 Retrying Redis connection in {retry_delay} seconds...")
                     import asyncio
                     await asyncio.sleep(retry_delay)
                 else:
-                    logger.error(f"❌ Redis connection failed after {max_retries} attempts: {e}")
                     redis_connected = False
-        
+        logger.info(f"Application running in port: {config.PORT}")
         # Log available endpoints
         log_service_endpoints()
         
         # Log final service status
-        log_service_status(db_connected, redis_connected)
+        log_service_status(db_connected, redis_connected, db_error)
             
         # Yield control to FastAPI
         yield
@@ -210,4 +177,5 @@ app = create_application()
 
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=4000)
+    logger.info(f"🌟 Starting {config.PROJECT_NAME} on port {config.PORT}")
+    uvicorn.run("main:app", host="0.0.0.0", port=config.PORT)

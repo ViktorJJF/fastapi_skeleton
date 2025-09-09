@@ -171,66 +171,14 @@ def setup_logging():
     # Configure loguru
     log_level = "DEBUG" if config.DEBUG else "INFO"
     
-    # Create logs directory if it doesn't exist
-    logs_dir = Path("logs")
-    logs_dir.mkdir(exist_ok=True)
-    
-    # Define handlers
+    # Define handlers - only console logging, no file logging
     handlers = [
         # Console handler
         {
             "sink": sys.stdout,
             "level": log_level,
             "colorize": True,
-            "format": "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
-        },
-        # Main log file - includes all logs
-        {
-            "sink": logs_dir / "app.log",
-            "rotation": "20 MB",
-            "retention": "1 week",
-            "compression": "zip",
-            "level": log_level,
-            "format": "{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {name}:{function}:{line} - {message}",
-            "backtrace": True,
-            "diagnose": True,
-            "enqueue": True,
-        },
-        # Error log file - only ERROR and higher
-        {
-            "sink": logs_dir / "error.log",
-            "rotation": "10 MB",
-            "retention": "1 month",
-            "compression": "zip",
-            "level": "ERROR",
-            "format": "{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {name}:{function}:{line} - {message}",
-            "backtrace": True,
-            "diagnose": True,
-            "enqueue": True,
-        },
-        # JSON log file for machine processing
-        {
-            "sink": logs_dir / "json.log",
-            "rotation": "20 MB",
-            "retention": "1 week",
-            "compression": "zip",
-            "format": lambda record: json.dumps({
-                "timestamp": record["time"].isoformat(),
-                "level": record["level"].name,
-                "message": record["message"],
-                "name": record["name"],
-                "function": record["function"],
-                "line": record["line"],
-                "file": record["file"].name,
-                "thread_id": record["thread"].id,
-                "process_id": record["process"].id,
-                "exception": str(record["exception"]) if record["exception"] else None,
-                "environment": os.getenv("PYTHON_ENV", "development"),
-                "service": config.PROJECT_NAME,
-                "host": socket.gethostname()
-            }) + "\n",
-            "level": log_level,
-            "enqueue": True,
+            "format": "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <level>{message}</level>",
         }
     ]
     
@@ -261,9 +209,8 @@ def setup_logging():
     logger.configure(handlers=handlers)
     
     # Log startup information
-    logger.info(f"Logging initialized: level={log_level}, logs_dir={logs_dir.absolute()}")
+    logger.info(f"Logging initialized: level={log_level}, console_only=True")
     logger.info(f"Environment: {os.getenv('PYTHON_ENV', 'development')}")
-    logger.info(f"Service: {config.PROJECT_NAME}")
     
     # Register atexit handler to flush logs
     def _flush_logs():

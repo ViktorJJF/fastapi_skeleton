@@ -25,12 +25,50 @@ from app.utils.db_helpers import (
 )
 from app.utils.error_handling import handle_error, is_id_valid, build_error_object
 
+async def list_paginated(
+    request: Request, pagination: PaginationParams, db: AsyncSession
+) -> JSONResponse:
+    """
+    List assistants with pagination.
+    """
+    try:
+        # Pass the pagination model directly to check_query_string
+        processed_query = await check_query_string(pagination, Assistant)
+        result = await get_items(db, Assistant, request, processed_query)
+
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content=result,
+        )
+    except Exception as e:
+        return await handle_error(request, e)
+
+
+async def get_one(id: str, request: Request, db: AsyncSession) -> JSONResponse:
+    """
+    Get one assistant by ID.
+    """
+    try:
+        # Validate ID
+        valid_id = is_id_valid(id)
+
+        # Get item
+        item = await get_item(db, Assistant, valid_id)
+        if not item:
+            raise build_error_object(status.HTTP_404_NOT_FOUND, "Assistant not found")
+
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"ok": True, "payload": item.to_dict()},
+        )
+    except Exception as e:
+        return await handle_error(request, e)
 
 async def create(
     item: AssistantCreate, request: Request, db: AsyncSession
 ) -> JSONResponse:
     """
-    Create a new assistant.
+    Create a new item.
     """
     try:
         # Create item
@@ -47,7 +85,7 @@ async def update(
     id: str, item: AssistantUpdate, request: Request, db: AsyncSession
 ) -> JSONResponse:
     """
-    Update an assistant.
+    Update an item.
     """
     try:
         # Validate ID
@@ -67,7 +105,7 @@ async def update(
 
 async def delete(id: str, request: Request, db: AsyncSession) -> JSONResponse:
     """
-    Delete an assistant.
+    Delete an item.
     """
     try:
         # Validate ID
@@ -90,7 +128,7 @@ async def delete_many(
     request: Request, item: AssistantDeleteManyInput, db: AsyncSession
 ) -> JSONResponse:
     """
-    Delete multiple assistants by their IDs.
+    Delete multiple items by their IDs.
     """
     try:
         valid_ids = []
@@ -135,55 +173,3 @@ async def delete_many(
         return await handle_error(request, e)
 
 
-async def get_one(id: str, request: Request, db: AsyncSession) -> JSONResponse:
-    """
-    Get one assistant by ID.
-    """
-    try:
-        # Validate ID
-        valid_id = is_id_valid(id)
-
-        # Get item
-        item = await get_item(db, Assistant, valid_id)
-        if not item:
-            raise build_error_object(status.HTTP_404_NOT_FOUND, "Assistant not found")
-
-        return JSONResponse(
-            status_code=status.HTTP_200_OK,
-            content={"ok": True, "payload": item.to_dict()},
-        )
-    except Exception as e:
-        return await handle_error(request, e)
-
-
-async def list_all(request: Request, db: AsyncSession) -> JSONResponse:
-    """
-    List all assistants.
-    """
-    try:
-        items = await get_all_items(db, Assistant)
-        return JSONResponse(
-            status_code=status.HTTP_200_OK,
-            content={"ok": True, "payload": [item.to_dict() for item in items]},
-        )
-    except Exception as e:
-        return await handle_error(request, e)
-
-
-async def list_paginated(
-    request: Request, pagination: PaginationParams, db: AsyncSession
-) -> JSONResponse:
-    """
-    List assistants with pagination.
-    """
-    try:
-        # Pass the pagination model directly to check_query_string
-        processed_query = await check_query_string(pagination, Assistant)
-        result = await get_items(db, Assistant, request, processed_query)
-
-        return JSONResponse(
-            status_code=status.HTTP_200_OK,
-            content=result,
-        )
-    except Exception as e:
-        return await handle_error(request, e)
