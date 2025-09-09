@@ -118,7 +118,7 @@ class BaseController(
                 return {
                     "ok": True,
                     "payload": [
-                        self.get_schema.model_validate(item).model_dump()
+                        self.get_schema.model_validate(item).model_dump(mode="json")
                         for item in items
                     ],
                 }
@@ -137,7 +137,7 @@ class BaseController(
 
                 # Convert items to schema
                 result.items = [
-                    self.get_schema.model_validate(item).model_dump()
+                    self.get_schema.model_validate(item).model_dump(mode="json")
                     for item in result.items
                 ]
 
@@ -164,7 +164,9 @@ class BaseController(
                 item = await get_item(db, self.model, valid_id)
                 return {
                     "ok": True,
-                    "payload": self.get_schema.model_validate(item).model_dump(),
+                    "payload": self.get_schema.model_validate(item).model_dump(
+                        mode="json"
+                    ),
                 }
             except HTTPException as e:
                 raise e
@@ -192,7 +194,9 @@ class BaseController(
                 item = await create_item(db, self.model, item_in.dict())
                 return {
                     "ok": True,
-                    "payload": self.get_schema.model_validate(item).model_dump(),
+                    "payload": self.get_schema.model_validate(item).model_dump(
+                        mode="json"
+                    ),
                 }
             except HTTPException as e:
                 raise e
@@ -224,7 +228,9 @@ class BaseController(
                 )
                 return {
                     "ok": True,
-                    "payload": self.get_schema.model_validate(item).model_dump(),
+                    "payload": self.get_schema.model_validate(item).model_dump(
+                        mode="json"
+                    ),
                 }
             except HTTPException as e:
                 raise e
@@ -241,7 +247,9 @@ class BaseController(
                 item = await delete_item(db, self.model, valid_id)
                 return {
                     "ok": True,
-                    "payload": self.get_schema.model_validate(item).model_dump(),
+                    "payload": self.get_schema.model_validate(item).model_dump(
+                        mode="json"
+                    ),
                 }
             except HTTPException as e:
                 raise e

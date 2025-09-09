@@ -13,7 +13,7 @@ class AssistantBase(BaseModel):
     description: str | None = Field(
         None, description="A description of the assistant's purpose and capabilities"
     )
-    status: str | None = Field(None, description="The status of the assistant")
+    status: bool | None = Field(None, description="The status of the assistant")
 
 
 class AssistantCreate(AssistantBase):

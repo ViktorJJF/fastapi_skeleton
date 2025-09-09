@@ -32,17 +32,18 @@ async def list_paginated(
         processed_query = await check_query_string(pagination, Assistant)
         result = await get_items(db, Assistant, request, processed_query)
 
-        # Convert payload items to Pydantic models
-        assistants_data = result["payload"]
-        assistants = [
-            AssistantSchema.model_validate(assistant) for assistant in assistants_data
+        # Convert payload items to Pydantic models with datetime serialization
+        items_data = result["payload"]
+        items = [
+            AssistantSchema.model_validate(item).model_dump(mode="json")
+            for item in items_data
         ]
 
         # Build proper paginated response structure
         response_data = {
             "ok": True,
             "payload": {
-                "payload": assistants,
+                "payload": items,
                 "totalDocs": result["totalDocs"],
                 "limit": result["limit"],
                 "totalPages": result["totalPages"],
@@ -78,7 +79,7 @@ async def get_one(id: str, request: Request, db: AsyncSession) -> JSONResponse:
 
         return JSONResponse(
             status_code=status.HTTP_200_OK,
-            content={"ok": True, "payload": assistant_schema},
+            content={"ok": True, "payload": assistant_schema.model_dump(mode="json")},
         )
     except Exception as e:
         return await handle_error(request, e)
@@ -94,13 +95,11 @@ async def create(
         # Convert Pydantic model to dictionary for database creation
         item_data = item.model_dump(exclude_unset=True)
         created_item = await create_item(db, Assistant, item_data)
-
-        # Convert database model to Pydantic model
-        assistant_schema = AssistantSchema.model_validate(created_item)
-
+        # convert to valid dict
+        created_item_dict = created_item.to_dict()
         return JSONResponse(
             status_code=status.HTTP_201_CREATED,
-            content={"ok": True, "payload": assistant_schema},
+            content={"ok": True, "payload": created_item_dict},
         )
     except Exception as e:
         return await handle_error(request, e)
@@ -125,7 +124,7 @@ async def update(
 
         return JSONResponse(
             status_code=status.HTTP_200_OK,
-            content={"ok": True, "payload": assistant_schema},
+            content={"ok": True, "payload": assistant_schema.model_dump(mode="json")},
         )
     except Exception as e:
         return await handle_error(request, e)

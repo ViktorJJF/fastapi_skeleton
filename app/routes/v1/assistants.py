@@ -30,7 +30,7 @@ router = APIRouter()
 @router.get(
     "/",
     response_model=AssistantPaginatedResponse,
-    dependencies=[Depends(require_admin_or_superadmin)],
+    # dependencies=[Depends(require_admin_or_superadmin)],
 )
 async def list_assistants(
     request: Request,
@@ -47,7 +47,7 @@ async def list_assistants(
 @router.get(
     "/{id}",
     response_model=AssistantResponse,
-    dependencies=[Depends(require_admin_or_superadmin)],
+    # dependencies=[Depends(require_admin_or_superadmin)],
 )
 async def get_assistant(
     request: Request, response: Response, id: int, db: AsyncSession = Depends(get_db)
@@ -79,7 +79,7 @@ async def create_assistant(
 @router.put(
     "/{id}",
     response_model=AssistantResponse,
-    dependencies=[Depends(require_admin_or_superadmin)],
+    # dependencies=[Depends(require_admin_or_superadmin)],
 )
 async def update_assistant(
     request: Request,
@@ -97,7 +97,7 @@ async def update_assistant(
 @router.delete(
     "/{id}",
     response_model=DeleteResponse,
-    dependencies=[Depends(require_admin_or_superadmin)],
+    # dependencies=[Depends(require_admin_or_superadmin)],
 )
 async def delete_assistant(
     request: Request, response: Response, id: int, db: AsyncSession = Depends(get_db)

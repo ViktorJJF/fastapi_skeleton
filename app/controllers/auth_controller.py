@@ -16,7 +16,7 @@ from app.schemas.auth import (
     VerifyEmailRequest,
     VerificationResponse,
 )
-from app.schemas.user import UserCreate, UserInToken
+from app.schemas.user import UserCreate, UserInToken, User as UserSchema
 from app.utils.security import verify_password, create_access_token, get_password_hash
 from app.utils.error_handling import handle_error, build_error_object
 from app.core.config import config
@@ -138,7 +138,7 @@ async def register(user_in: UserCreate, request: Request, db: AsyncSession) -> d
 
         # Prepare response payload dictionary
         response_user = UserSchema.model_validate(db_user)
-        response_payload_data = {"user": response_user.model_dump()}
+        response_payload_data = {"user": response_user.model_dump(mode="json")}
         if config.DEBUG:  # Include verification token only in debug/dev
             response_payload_data["verification_token"] = verification_token
 
@@ -188,7 +188,7 @@ async def login(login_data: LoginRequest, request: Request, db: AsyncSession) ->
         access_token = create_access_token(user=user_token_data)
 
         # Prepare payload dictionary matching TokenResponse schema
-        token_payload = TokenResponse(access_token=access_token).model_dump()
+        token_payload = TokenResponse(access_token=access_token).model_dump(mode="json")
 
         # Return dictionary matching ApiResponse structure
         return {"ok": True, "payload": token_payload}
@@ -227,7 +227,7 @@ async def verify_email(
                 "ok": True,
                 "payload": VerificationResponse(
                     email=user.email, verified=True
-                ).model_dump(),
+                ).model_dump(mode="json"),
             },
         )
 

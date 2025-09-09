@@ -53,7 +53,7 @@ async def create(item: UserCreate, request: Request, db: AsyncSession) -> JSONRe
             status_code=status.HTTP_201_CREATED,
             content={
                 "ok": True,
-                "payload": UserSchema.model_validate(db_user).model_dump(),
+                "payload": UserSchema.model_validate(db_user).model_dump(mode="json"),
             },
         )
     except Exception as e:
@@ -92,7 +92,7 @@ async def update(
             status_code=status.HTTP_200_OK,
             content={
                 "ok": True,
-                "payload": UserSchema.model_validate(db_user).model_dump(),
+                "payload": UserSchema.model_validate(db_user).model_dump(mode="json"),
             },
         )
     except Exception as e:
@@ -179,11 +179,12 @@ async def get_one(id: str, request: Request, db: AsyncSession) -> JSONResponse:
             status_code=status.HTTP_200_OK,
             content={
                 "ok": True,
-                "payload": UserSchema.model_validate(item).model_dump(),
+                "payload": UserSchema.model_validate(item).model_dump(mode="json"),
             },
         )
     except Exception as e:
         return await handle_error(request, e)
+
 
 async def list_paginated(
     request: Request, pagination: PaginationParams, db: AsyncSession
@@ -204,7 +205,8 @@ async def list_paginated(
 
         # Validate items using User schema
         result_items = [
-            UserSchema.model_validate(item).model_dump() for item in result.items
+            UserSchema.model_validate(item).model_dump(mode="json")
+            for item in result.items
         ]
 
         return JSONResponse(
